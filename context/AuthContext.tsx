@@ -9,7 +9,7 @@ import Cookies from "js-cookie";
 interface AuthContextType {
   user: Employee | null;
   loading: boolean;
-  login: (token: string) => void;
+  login: (token: string) => Promise<void>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -48,10 +48,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     initAuth();
-  }, [pathname]);
+    // Hanya run sekali saat component mount, bukan setiap pathname berubah
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const login = (accessToken: string) => {
-    refreshProfile();
+  const login = async (accessToken: string) => {
+    // Token sudah disimpan oleh authAPI.login() di lib/api.ts
+    // Tunggu profile loaded sebelum redirect
+    await refreshProfile();
     router.push("/dashboard");
   };
 

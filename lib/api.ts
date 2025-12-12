@@ -32,11 +32,11 @@ api.interceptors.response.use(
       const isAuthEndpoint = error.config?.url?.includes("/auth/login");
       
       if (!isAuthEndpoint) {
+        // Hapus token yang invalid
         Cookies.remove("access_token");
         Cookies.remove("refresh_token");
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
-        }
+        // Biarkan AuthContext yang handle redirect, jangan hard redirect di sini
+        // Ini mencegah double redirect dan race condition
       }
     }
     return Promise.reject(error);
@@ -77,8 +77,10 @@ export const authAPI = {
 // --- EMPLOYEE ---
 export const employeeAPI = {
   me: async (): Promise<Employee> => {
-    const response = await api.get<Employee>("/api/employee/me");
-    return response.data;
+    const response = await api.get<any>("/api/employee/me");
+    // Backend bisa return { profile: {...} } atau langsung {...}
+    // Handle kedua format untuk compatibility
+    return response.data.profile || response.data;
   },
   updateMe: async (data: { name?: string; username?: string }): Promise<Employee> => {
     const response = await api.patch<Employee>("/api/employee/me", data);
