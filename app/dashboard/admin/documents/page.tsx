@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { documentAPI } from "@/lib/api";
-import { DocumentStaff, DocumentAdminInput } from "@/types";
-import { toast } from "sonner";
+import { documentAPI, getErrorMessage } from "@/lib/api";
+import { DocumentStaff } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -12,160 +13,107 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Search,
-  Trash2,
-  Pencil,
-  FileText,
-  User as UserIcon,
-} from "lucide-react";
-import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { FileText, Search, Trash2, UploadCloud } from "lucide-react";
+import { DocumentUploadForm } from "@/components/ui/documents/DocumentUploadForm";
+import { DocumentEditDialog } from "@/components/ui/documents/DocumentEditDialog";
 
 export default function AdminDocumentsPage() {
   const [documents, setDocuments] = useState<DocumentStaff[]>([]);
   const [filteredDocs, setFilteredDocs] = useState<DocumentStaff[]>([]);
-  const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editingDoc, setEditingDoc] = useState<DocumentStaff | null>(null);
-  const [editSubject, setEditSubject] = useState("");
 
-  const fetchDocs = async () => {
+  const fetchDocuments = async () => {
     setLoading(true);
     try {
-      const res = await documentAPI.getAllAdmin();
-      if (res.status) {
-        setDocuments(res.data);
-        setFilteredDocs(res.data);
-      }
+      const response = await documentAPI.getAllAdmin();
+      const data = response.data?.documents || [];
+      setDocuments(data);
+      setFilteredDocs(data);
     } catch (error) {
-      toast.error("Gagal memuat semua dokumen");
+      toast.error("Gagal memuat dokumen");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDocs();
+    fetchDocuments();
   }, []);
+
   useEffect(() => {
-    const lowerSearch = search.toLowerCase();
+    const lower = searchQuery.toLowerCase();
     const filtered = documents.filter(
       (doc) =>
-        doc.Subject.toLowerCase().includes(lowerSearch) ||
-        doc.User?.Name?.toLowerCase().includes(lowerSearch) ||
-        doc.Employee?.Name?.toLowerCase().includes(lowerSearch)
+        doc.Subject.toLowerCase().includes(lower) ||
+        doc.user?.name?.toLowerCase().includes(lower)
     );
     setFilteredDocs(filtered);
-  }, [search, documents]);
+  }, [searchQuery, documents]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Admin: Yakin hapus dokumen ini permanen?")) return;
+    if (!confirm("Hapus dokumen ini secara permanen?")) return;
     try {
       await documentAPI.delete(id);
-      toast.success("Dokumen berhasil dihapus");
-      fetchDocs();
-    } catch {
-      toast.error("Gagal menghapus dokumen");
-    }
-  };
-
-  const openEdit = (doc: DocumentStaff) => {
-    setEditingDoc(doc);
-    setEditSubject(doc.Subject);
-    setIsEditOpen(true);
-  };
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingDoc) return;
-
-    try {
-      const payload: DocumentAdminInput = { subject: editSubject };
-      await documentAPI.updateAdmin(editingDoc.ID, payload);
-      toast.success("Dokumen diperbarui");
-      setIsEditOpen(false);
-      fetchDocs();
-    } catch {
-      toast.error("Gagal update dokumen");
+      toast.success("Dokumen dihapus");
+      fetchDocuments();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     }
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-          Semua Dokumen Arsip
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <h2 className="text-3xl font-bold tracking-tight">
+          Semua Dokumen (Admin)
         </h2>
-        <p className="text-gray-500">
-          Monitoring seluruh dokumen yang masuk ke sistem.
-        </p>
+        <DocumentUploadForm onSuccess={fetchDocuments} isAdmin={true}>
+          <Button>
+            <UploadCloud className="mr-2 h-4 w-4" /> Upload untuk Pegawai
+          </Button>
+        </DocumentUploadForm>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-            <Input
-              placeholder="Cari Judul atau Nama Pengupload..."
-              className="pl-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Pengupload</TableHead>
-                <TableHead>Judul Dokumen</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>File</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Cari berdasarkan judul..."
+          className="pl-9"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {loading ? (
+        <div className="text-center py-8">Memuat data...</div>
+      ) : filteredDocs.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground">
+          Tidak ada dokumen ditemukan.
+        </div>
+      ) : (
+        <>
+          {/* DESKTOP VIEW */}
+          <div className="hidden md:block border rounded-md">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center h-24">
-                    Loading...
-                  </TableCell>
+                  <TableHead>Subjek</TableHead>
+                  <TableHead>Pemilik (ID User)</TableHead>
+                  <TableHead>Tanggal</TableHead>
+                  <TableHead>File</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
-              ) : filteredDocs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center h-24">
-                    Tidak ada data.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredDocs.map((doc) => (
+              </TableHeader>
+              <TableBody>
+                {filteredDocs.map((doc) => (
                   <TableRow key={doc.ID}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
-                          <UserIcon className="h-4 w-4 text-slate-500" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-sm">
-                            {doc.User?.Name || doc.Employee?.Name || "Unknown"}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {doc.User?.Role || doc.Employee?.Role || "-"}
-                          </span>
-                        </div>
-                      </div>
-                    </TableCell>
                     <TableCell className="font-medium">{doc.Subject}</TableCell>
+                    <TableCell className="text-xs font-mono">
+                      {doc.UserID}
+                    </TableCell>
                     <TableCell>
                       {new Date(doc.CreatedAt).toLocaleDateString("id-ID")}
                     </TableCell>
@@ -173,65 +121,69 @@ export default function AdminDocumentsPage() {
                       <a
                         href={doc.FileUrl}
                         target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center text-blue-600 hover:underline text-sm"
+                        className="text-blue-600 hover:underline flex items-center gap-1"
                       >
-                        <FileText className="mr-1 h-3 w-3" /> Buka
+                        <FileText className="h-4 w-4" /> Lihat
                       </a>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEdit(doc)}
-                        >
-                          <Pencil className="h-4 w-4 text-orange-500" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(doc.ID)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
+                    <TableCell className="text-right flex justify-end gap-1">
+                      <DocumentEditDialog
+                        document={doc}
+                        onSuccess={fetchDocuments}
+                        isAdmin={true}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(doc.ID)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
 
-      {/* Edit Admin */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Dokumen (Admin Mode)</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleUpdate} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Judul Dokumen</Label>
-              <Input
-                value={editSubject}
-                onChange={(e) => setEditSubject(e.target.value)}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsEditOpen(false)}
-              >
-                Batal
-              </Button>
-              <Button type="submit">Simpan Perubahan</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+          {/* MOBILE VIEW */}
+          <div className="grid gap-4 md:hidden">
+            {filteredDocs.map((doc) => (
+              <Card key={doc.ID}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">{doc.Subject}</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    User ID: {doc.UserID.substring(0, 8)}...
+                  </p>
+                </CardHeader>
+                <CardContent className="flex justify-between items-center pt-2 border-t">
+                  <a
+                    href={doc.FileUrl}
+                    target="_blank"
+                    className="text-sm text-blue-600"
+                  >
+                    Download File
+                  </a>
+                  <div className="flex gap-1">
+                    <DocumentEditDialog
+                      document={doc}
+                      onSuccess={fetchDocuments}
+                      isAdmin={true}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(doc.ID)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

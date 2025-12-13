@@ -6,7 +6,12 @@ import { DocumentStaff } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 interface Props {
@@ -17,12 +22,12 @@ interface Props {
   isAdminMode?: boolean;
 }
 
-export default function DocumentFormDialog({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
+export default function DocumentFormDialog({
+  isOpen,
+  onClose,
+  onSuccess,
   documentToEdit,
-  isAdminMode = false 
+  isAdminMode = false,
 }: Props) {
   const [subject, setSubject] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -31,7 +36,7 @@ export default function DocumentFormDialog({
   useEffect(() => {
     if (documentToEdit) {
       setSubject(documentToEdit.Subject);
-      setFile(null); // File tidak bisa di-prefill
+      setFile(null);
     } else {
       setSubject("");
       setFile(null);
@@ -44,11 +49,9 @@ export default function DocumentFormDialog({
 
     try {
       if (documentToEdit) {
-        // Update mode
         await documentAPI.updateSelf(documentToEdit.ID, { subject, file });
         toast.success("Dokumen berhasil diupdate");
       } else {
-        // Create mode
         await documentAPI.uploadSelf({ subject, file });
         toast.success("Dokumen berhasil diupload");
       }
@@ -83,7 +86,9 @@ export default function DocumentFormDialog({
             <Label>File (PDF/Gambar)</Label>
             <Input
               type="file"
-              onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
+              onChange={(e) =>
+                setFile(e.target.files ? e.target.files[0] : null)
+              }
               required={!documentToEdit}
             />
             {documentToEdit && (

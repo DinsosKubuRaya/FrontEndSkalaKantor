@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { employeeAPI } from "@/lib/api";
-import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
+import { employeeAPI, getErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -14,23 +13,18 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2 } from "lucide-react";
+import { User, Lock, Save } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
-
-  // State Profile
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
-
-  // State Password
-  const [passData, setPassData] = useState({
-    current: "",
-    new: "",
-    confirm: "",
-  });
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -45,9 +39,9 @@ export default function ProfilePage() {
     try {
       await employeeAPI.updateMe({ name, username });
       toast.success("Profil berhasil diperbarui");
-      await refreshProfile(); // Refresh data user di context
+      refreshProfile();
     } catch (error) {
-      toast.error("Gagal memperbarui profil");
+      toast.error(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -55,58 +49,59 @@ export default function ProfilePage() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passData.new !== passData.confirm) {
-      toast.error("Konfirmasi password tidak cocok");
+    if (newPassword !== confirmPassword) {
+      toast.error("Password baru dan konfirmasi tidak cocok");
       return;
     }
     setLoading(true);
     try {
       await employeeAPI.changePassword({
-        current_password: passData.current,
-        new_password: passData.new,
-        confirm_password: passData.confirm,
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
       });
-      toast.success("Password berhasil diubah. Silakan login ulang.");
-      setPassData({ current: "", new: "", confirm: "" });
-    } catch (error: unknown) {
-      toast.error("Gagal mengubah password");
+      toast.success("Password berhasil diubah");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Pengaturan Akun</h2>
-        <p className="text-gray-500">
-          Kelola informasi profil dan keamanan akun Anda.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold tracking-tight">Pengaturan Akun</h2>
 
-      <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="general">Umum</TabsTrigger>
-          <TabsTrigger value="security">Keamanan</TabsTrigger>
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 lg:w-100px">
+          <TabsTrigger value="profile">Profil</TabsTrigger>
+          <TabsTrigger value="password">Password</TabsTrigger>
         </TabsList>
 
-        {/* TAB UMUM */}
-        <TabsContent value="general">
+        {/* --- PROFIL --- */}
+        <TabsContent value="profile">
           <Card>
             <CardHeader>
               <CardTitle>Informasi Profil</CardTitle>
               <CardDescription>
-                Update nama dan username Anda disini.
+                Perbarui nama dan username Anda.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleUpdateProfile} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Nama Lengkap</Label>
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Username</Label>
@@ -118,31 +113,31 @@ export default function ProfilePage() {
                 <div className="space-y-2">
                   <Label>Role</Label>
                   <Input
-                    value={user?.Role}
+                    value={user?.Role || ""}
                     disabled
-                    className="bg-gray-100 capitalize"
+                    className="bg-gray-100"
                   />
                 </div>
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={loading}>
-                    {loading && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Simpan Perubahan
-                  </Button>
-                </div>
+                <Button type="submit" disabled={loading}>
+                  {loading ? (
+                    <span className="animate-spin mr-2">⏳</span>
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Simpan Perubahan
+                </Button>
               </form>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* TAB SECURITY */}
-        <TabsContent value="security">
+        {/* --- PASSWORD --- */}
+        <TabsContent value="password">
           <Card>
             <CardHeader>
               <CardTitle>Ganti Password</CardTitle>
               <CardDescription>
-                Pastikan password baru Anda aman dan kuat.
+                Pastikan password baru Anda aman.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -151,47 +146,36 @@ export default function ProfilePage() {
                   <Label>Password Saat Ini</Label>
                   <Input
                     type="password"
-                    value={passData.current}
-                    onChange={(e) =>
-                      setPassData({ ...passData, current: e.target.value })
-                    }
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
                     required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Password Baru</Label>
-                  <Input
-                    type="password"
-                    value={passData.new}
-                    onChange={(e) =>
-                      setPassData({ ...passData, new: e.target.value })
-                    }
-                    required
-                  />
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="pl-9"
+                      required
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Konfirmasi Password Baru</Label>
                   <Input
                     type="password"
-                    value={passData.confirm}
-                    onChange={(e) =>
-                      setPassData({ ...passData, confirm: e.target.value })
-                    }
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                   />
                 </div>
-                <div className="flex justify-end">
-                  <Button
-                    type="submit"
-                    variant="destructive"
-                    disabled={loading}
-                  >
-                    {loading && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Ubah Password
-                  </Button>
-                </div>
+                <Button type="submit" variant="destructive" disabled={loading}>
+                  {loading ? "Memproses..." : "Ganti Password"}
+                </Button>
               </form>
             </CardContent>
           </Card>

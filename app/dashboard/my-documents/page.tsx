@@ -5,6 +5,9 @@ import { documentAPI, getErrorMessage } from "@/lib/api";
 import { DocumentStaff } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+import { FileText, Download, Trash2, UploadCloud } from "lucide-react";
+import { DocumentUploadForm } from "@/components/ui/documents/DocumentUploadForm";
 import {
   Table,
   TableBody,
@@ -13,23 +16,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { toast } from "sonner";
-import { Plus, Pencil, Trash2, FileText } from "lucide-react";
-import DocumentFormDialog from "@/components/ui/documents/DocumentFormDialog";
+import { DocumentEditDialog } from "@/components/ui/documents/DocumentEditDialog";
 
 export default function MyDocumentsPage() {
   const [documents, setDocuments] = useState<DocumentStaff[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState<DocumentStaff | null>(null);
 
   const fetchDocuments = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const response = await documentAPI.getMyDocuments();
-      setDocuments(response.data);
+      setDocuments(response.data?.documents || []);
     } catch (error) {
-      toast.error(getErrorMessage(error));
+      toast.error("Gagal memuat dokumen");
     } finally {
       setLoading(false);
     }
@@ -40,7 +39,7 @@ export default function MyDocumentsPage() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Yakin ingin menghapus dokumen ini?")) return;
+    if (!confirm("Hapus dokumen ini?")) return;
     try {
       await documentAPI.delete(id);
       toast.success("Dokumen dihapus");
@@ -50,78 +49,64 @@ export default function MyDocumentsPage() {
     }
   };
 
-  const openCreate = () => {
-    setSelectedDoc(null);
-    setIsDialogOpen(true);
-  };
-
-  const openEdit = (doc: DocumentStaff) => {
-    setSelectedDoc(doc);
-    setIsDialogOpen(true);
-  };
-
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Dokumen Saya</h1>
-        <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" /> Upload Dokumen
-        </Button>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <h2 className="text-3xl font-bold tracking-tight">Dokumen Saya</h2>
+        <DocumentUploadForm onSuccess={fetchDocuments} isAdmin={false}>
+          <Button>
+            <UploadCloud className="mr-2 h-4 w-4" /> Upload Dokumen
+          </Button>
+        </DocumentUploadForm>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Arsip Pribadi</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Perihal</TableHead>
-                <TableHead>Nama File</TableHead>
-                <TableHead>Tanggal Upload</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
+      {loading ? (
+        <div className="text-center py-8">Memuat dokumen...</div>
+      ) : documents.length === 0 ? (
+        <Card className="bg-muted/50 border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-10">
+            <FileText className="h-10 w-10 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">
+              Belum ada dokumen yang diupload.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* DESKTOP VIEW */}
+          <div className="hidden md:block border rounded-md">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">
-                    Loading...
-                  </TableCell>
+                  <TableHead>Subjek</TableHead>
+                  <TableHead>Tanggal Upload</TableHead>
+                  <TableHead>File</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
-              ) : documents.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center">
-                    Belum ada dokumen.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                documents.map((doc) => (
+              </TableHeader>
+              <TableBody>
+                {documents.map((doc) => (
                   <TableRow key={doc.ID}>
                     <TableCell className="font-medium">{doc.Subject}</TableCell>
+                    <TableCell>
+                      {new Date(doc.CreatedAt).toLocaleDateString("id-ID")}
+                    </TableCell>
                     <TableCell>
                       <a
                         href={doc.FileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center hover:underline text-blue-600"
+                        className="text-blue-600 hover:underline flex items-center gap-1"
                       >
-                        <FileText className="mr-2 h-4 w-4" />{" "}
-                        {doc.FileUrl.split("/").pop()}
+                        <FileText className="h-4 w-4" /> Lihat File
                       </a>
                     </TableCell>
-                    <TableCell>
-                      {new Date(doc.CreatedAt).toLocaleDateString("id-ID")}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEdit(doc)}
-                      >
-                        <Pencil className="h-4 w-4 text-amber-500" />
-                      </Button>
+                    <TableCell className="text-right flex justify-end gap-2">
+                      <DocumentEditDialog
+                        document={doc}
+                        onSuccess={fetchDocuments}
+                        isAdmin={false}
+                      />
                       <Button
                         variant="ghost"
                         size="icon"
@@ -131,20 +116,58 @@ export default function MyDocumentsPage() {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
 
-      <DocumentFormDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        onSuccess={fetchDocuments}
-        documentToEdit={selectedDoc}
-        isAdminMode={false}
-      />
+          {/* MOBILE VIEW */}
+          <div className="grid gap-4 md:hidden">
+            {documents.map((doc) => (
+              <Card key={doc.ID}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">
+                    {doc.Subject}
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(doc.CreatedAt).toLocaleDateString("id-ID", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                </CardHeader>
+                <CardContent className="flex justify-between items-center pt-2 border-t">
+                  <Button variant="outline" size="sm" asChild>
+                    <a
+                      href={doc.FileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Download className="mr-2 h-4 w-4" /> Download
+                    </a>
+                  </Button>
+                  <div className="flex gap-1">
+                    <DocumentEditDialog
+                      document={doc}
+                      onSuccess={fetchDocuments}
+                      isAdmin={false}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(doc.ID)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

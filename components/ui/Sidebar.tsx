@@ -3,154 +3,123 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
-  Users,
   FileText,
-  FolderOpen,
+  Users,
   LogOut,
-  Settings,
-  Shield,
+  UserCircle,
+  Menu,
+  X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { Button } from "./button";
 
-export default function Sidebar() {
+export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const isActive = (path: string) => pathname === path;
-  const renderRoleBadge = () => {
-    if (!user) return null;
-    const colors = {
-      superadmin: "bg-red-500",
-      admin: "bg-blue-500",
-      staff: "bg-green-500",
-    };
-    return (
-      <span
-        className={`text-xs px-2 py-0.5 rounded-full ${
-          colors[user.Role] || "bg-gray-500"
-        } text-white capitalize`}
-      >
-        {user.Role}
-      </span>
-    );
-  };
+  const [isOpen, setIsOpen] = useState(false);
+  const isAdmin = user?.Role === "admin";
 
-  return (
-    <div className="flex h-screen w-64 flex-col bg-slate-900 text-white border-r border-slate-800">
-      {/* Header Sidebar */}
-      <div className="flex h-20 items-center gap-3 px-6 border-b border-slate-800">
-        <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-          <FileText className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-lg font-bold leading-none">Arsip Digital</h1>
-          <span className="text-xs text-slate-400">Kantor Dinsos</span>
-        </div>
-      </div>
+  const links = [
+    {
+      href: "/dashboard",
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      show: true,
+    },
+    {
+      href: "/dashboard/profile",
+      label: "Profil Saya",
+      icon: UserCircle,
+      show: true,
+    },
+    {
+      href: "/dashboard/my-documents",
+      label: "Dokumen Saya",
+      icon: FileText,
+      show: true,
+    },
+    {
+      href: "/dashboard/admin/users",
+      label: "Kelola Pegawai",
+      icon: Users,
+      show: isAdmin,
+    },
+    {
+      href: "/dashboard/admin/documents",
+      label: "Semua Dokumen",
+      icon: FileText,
+      show: isAdmin,
+    },
+  ];
 
-      {/* User Info  */}
-      <div className="px-6 py-4 bg-slate-800/50 mb-2">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center text-lg font-bold">
-            {user?.Name?.charAt(0) || "U"}
-          </div>
-          <div className="overflow-hidden">
-            <p className="text-sm font-medium truncate">{user?.Name}</p>
-            {renderRoleBadge()}
-          </div>
-        </div>
-      </div>
-
-      {/* Navigasi */}
-      <nav className="flex-1 space-y-1 px-3 py-2 overflow-y-auto">
-        <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-2">
-          Menu Utama
+  const sidebarContent = (
+    <div className="flex h-full flex-col gap-4 py-4">
+      <div className="px-6 py-2">
+        <h1 className="text-xl font-bold tracking-tight text-primary">
+          Skala Kantor
+        </h1>
+        <p className="text-xs text-muted-foreground">
+          {user?.Name} ({user?.Role})
         </p>
-
-        <Link
-          href="/dashboard"
-          className={`group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-            isActive("/dashboard")
-              ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-              : "text-slate-300 hover:bg-slate-800 hover:text-white"
-          }`}
-        >
-          <LayoutDashboard className="mr-3 h-5 w-5" />
-          Dashboard
-        </Link>
-
-        {/* Menu Admin / Superadmin */}
-        {(user?.Role === "admin" || user?.Role === "superadmin") && (
-          <>
-            <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-6">
-              Administrator
-            </p>
-            <Link
-              href="/dashboard/admin/employees"
-              className={`group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-                isActive("/dashboard/admin/employees")
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
-              }`}
-            >
-              <Users className="mr-3 h-5 w-5" />
-              Manajemen Staff
-            </Link>
-            <Link
-              href="/dashboard/admin/documents"
-              className={`group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-                isActive("/dashboard/admin/documents")
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
-              }`}
-            >
-              <Shield className="mr-3 h-5 w-5" />
-              Semua Dokumen
-            </Link>
-          </>
-        )}
-
-        <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-6">
-          Pribadi
-        </p>
-
-        <Link
-          href="/dashboard/my-documents"
-          className={`group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-            isActive("/dashboard/my-documents")
-              ? "bg-blue-600 text-white"
-              : "text-slate-300 hover:bg-slate-800 hover:text-white"
-          }`}
-        >
-          <FolderOpen className="mr-3 h-5 w-5" />
-          Dokumen Saya
-        </Link>
-
-        <Link
-          href="/dashboard/profile"
-          className={`group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-            isActive("/dashboard/profile")
-              ? "bg-blue-600 text-white"
-              : "text-slate-300 hover:bg-slate-800 hover:text-white"
-          }`}
-        >
-          <Settings className="mr-3 h-5 w-5" />
-          Pengaturan Profil
-        </Link>
+      </div>
+      <nav className="flex-1 space-y-1 px-4">
+        {links
+          .filter((link) => link.show)
+          .map((link) => {
+            const Icon = link.icon;
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all hover:text-primary",
+                  isActive
+                    ? "bg-secondary text-primary shadow-sm"
+                    : "text-muted-foreground hover:bg-secondary/50"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {link.label}
+              </Link>
+            );
+          })}
       </nav>
-
-      {/* Logout */}
-      <div className="border-t border-slate-800 p-4">
+      <div className="px-4 mt-auto">
         <Button
-          onClick={logout}
           variant="destructive"
-          className="w-full flex items-center justify-center gap-2"
+          className="w-full justify-start gap-3"
+          onClick={logout}
         >
           <LogOut className="h-4 w-4" />
           Keluar
         </Button>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-white border-b p-4 shadow-sm">
+        <span className="font-bold">Menu</span>
+        <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)}>
+          {isOpen ? <X /> : <Menu />}
+        </Button>
+      </div>
+
+      {isOpen && (
+        <div className="fixed inset-0 z-40 bg-background md:hidden pt-16">
+          {sidebarContent}
+        </div>
+      )}
+
+      <aside className="hidden md:flex h-screen w-64 flex-col border-r bg-background fixed left-0 top-0 overflow-y-auto">
+        {sidebarContent}
+      </aside>
+    </>
   );
 }

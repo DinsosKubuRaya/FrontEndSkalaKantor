@@ -1,42 +1,57 @@
-export type Role = "superadmin" | "admin" | "staff";
 export interface ApiResponse<T> {
-  data: T;
   message: string;
-  status: boolean;
+  data?: T;
+  error?: string;
+  status?: boolean;
+  meta?: {
+    page: number;
+    limit: number;
+    total_items: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
 }
+
+export interface ProfileResponse {
+  message: string;
+  profile: EmployeeBackendData;
+}
+
 export interface LoginResponse {
   access_token: string;
   refresh_token: string;
-}
-
-export interface EmployeeBackendData {
-  id: string;       
-  name: string;     
-  username: string; 
-  role: Role;      
-  created_at?: string;
-  updated_at?: string;
 }
 export interface UserProfile {
   ID: string;
   Name: string;
   Username: string;
-  Role: Role; 
+  Role: string;
+}
+export interface EmployeeBackendData {
+  id: string;
+  name: string;
+  username: string;
+  role: string;
+  created_at: string;
+  updated_at: string;
 }
 export interface Employee {
   ID: string;
   Name: string;
   Username: string;
-  Role: Role;     
+  Role: string;
   CreatedAt?: string;
   UpdatedAt?: string;
 }
+
 export interface EmployeeInput {
   name: string;
   username: string;
   password?: string;
-  role?: Role;
+  role: string;
 }
+
 export interface EmployeeMeInput {
   name: string;
   username: string;
@@ -47,26 +62,42 @@ export interface ChangePasswordInput {
   new_password: string;
   confirm_password: string;
 }
+
+export type Role = "staff" | "admin" | "supervisor";
+
 export interface DocumentStaff {
   ID: string;
   Subject: string;
-  FileUrl: string;
   UserID: string;
   EmployeeID?: string;
+  FilePath: string;
+  FileUrl: string;
   CreatedAt: string;
   UpdatedAt: string;
-  User?: UserProfile;
-  Employee?: Employee;
+  user?: {
+    name: string;
+    username: string;
+  };
 }
 
 export interface DocumentAdminInput {
+  subject: string;
   user_id?: string;
   employee_id?: string;
-  subject: string;
-  file?: File | null;
+  file: File | null;
 }
 
 export interface DocumentSelfInput {
   subject: string;
-  file?: File | null;
+  file: File | null;
+}
+
+export interface PaginatedDocuments {
+  documents: DocumentStaff[];
+  pagination: {
+    current_page: number;
+    per_page: number;
+    total_items: number;
+    total_pages: number;
+  };
 }

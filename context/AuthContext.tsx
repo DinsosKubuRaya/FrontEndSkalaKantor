@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authAPI, employeeAPI } from "@/lib/api";
 import { UserProfile } from "@/types";
+import { toast } from "sonner";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -29,12 +30,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await authAPI.logout(refreshToken);
       }
     } catch (error) {
-      console.error("Logout error (server side):", error);
+      toast.error("Gagal logout dengan benar.");
     } finally {
       localStorage.removeItem("token");
       localStorage.removeItem("refresh_token");
       document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
-
       setUser(null);
       setIsAuthenticated(false);
       router.push("/login");
@@ -43,13 +43,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshProfile = async (token?: string) => {
     try {
-      console.log(
-        "🔄 refreshProfile called with token:",
-        token ? "PASSED ✅" : "will use localStorage"
-      );
       const response = await employeeAPI.getMe(token);
-      if (response && response.data) {
-        const backendData = response.data;
+      if (response && response.profile) {
+        const backendData = response.profile;
+
         setUser({
           ID: backendData.id,
           Name: backendData.name,
@@ -57,26 +54,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           Role: backendData.role,
         });
         setIsAuthenticated(true);
-        console.log("✅ Profile loaded successfully:", backendData.name);
+      } else {
+        throw new Error("Invalid profile data");
       }
     } catch (error) {
-      console.error("❌ Gagal load profile", error);
+      toast.error("Sesi berakhir. Silakan login kembali.");
       logout();
     }
   };
 
   const login = async (accessToken: string, refreshToken: string) => {
-    console.log("🔐 Login called - Saving tokens to localStorage...");
     localStorage.setItem("token", accessToken);
     localStorage.setItem("refresh_token", refreshToken);
     document.cookie = `token=${accessToken}; path=/; max-age=86400; SameSite=Strict`;
-    console.log(
-      "💾 Tokens saved. Now calling refreshProfile with direct token..."
-    );
-
     setIsAuthenticated(true);
-    await refreshProfile(accessToken); // ✅ Pass token directly!
-    console.log("🚀 Redirecting to dashboard...");
+    await refreshProfile(accessToken);
+    toast.success("Berhasil login!");
     router.push("/dashboard");
   };
 
