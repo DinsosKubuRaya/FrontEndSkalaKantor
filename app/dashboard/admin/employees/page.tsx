@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { employeeAPI, getErrorMessage } from "@/lib/api";
+import { employeeAPI } from "@/lib/api";
 import { Employee } from "@/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -13,168 +12,191 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Search } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import EmployeeFormDialog from "@/components/ui/employees/EmployeeFormDialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function EmployeePage() {
+export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const { user } = useAuth();
+  const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
+    null
+  );
 
   const fetchEmployees = async () => {
     setLoading(true);
     try {
-      let data;
-      if (searchQuery) {
-        data = await employeeAPI.search(searchQuery);
-      } else {
-        data = await employeeAPI.getAll();
+      const response = search
+        ? await employeeAPI.search(search)
+        : await employeeAPI.getAll();
+
+      if (response.status) {
+        setEmployees(response.data);
       }
-      setEmployees(data);
     } catch (error) {
-      toast.error(getErrorMessage(error));
+      toast.error("Gagal mengambil data pegawai");
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user?.role === "admin") {
+    const timer = setTimeout(() => {
       fetchEmployees();
-    }
-  }, [user]);
+    }, 500); // Debounce search
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleDelete = async (id: string) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus pegawai ini?")) return;
+    try {
+      await employeeAPI.delete(id);
+      toast.success("Pegawai berhasil dihapus");
+      fetchEmployees();
+    } catch (error) {
+      toast.error("Gagal menghapus pegawai");
+    }
+  };
+
+  const handleSuccess = () => {
+    setIsDialogOpen(false);
+    setSelectedEmployee(null);
     fetchEmployees();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Hapus pegawai ini?")) return;
-    try {
-      await employeeAPI.delete(id);
-      toast.success("Pegawai dihapus");
-      fetchEmployees();
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
-  };
-
-  const openCreate = () => {
-    setSelectedEmp(null);
-    setIsDialogOpen(true);
-  };
-
-  const openEdit = (emp: Employee) => {
-    setSelectedEmp(emp);
-    setIsDialogOpen(true);
-  };
-
-  if (user?.role !== "admin") return <div>Akses Ditolak</div>;
-
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">Manajemen Pegawai</h1>
-        <Button onClick={openCreate}>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+            Manajemen Staff
+          </h2>
+          <p className="text-gray-500">
+            Kelola data pegawai dan hak akses sistem.
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            setSelectedEmployee(null);
+            setIsDialogOpen(true);
+          }}
+        >
           <Plus className="mr-2 h-4 w-4" /> Tambah Pegawai
         </Button>
       </div>
 
       <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Daftar Pegawai</CardTitle>
-            <form onSubmit={handleSearch} className="flex gap-2">
-              <Input
-                placeholder="Cari nama..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-50"
-              />
-              <Button type="submit" variant="ghost" size="icon">
-                <Search className="h-4 w-4" />
-              </Button>
-            </form>
+        <CardHeader className="pb-3">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              placeholder="Cari nama pegawai..."
+              className="pl-9 max-w-sm"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nama</TableHead>
-                <TableHead>Username</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Terdaftar</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4">
-                    Loading...
-                  </TableCell>
+                  <TableHead>Nama Lengkap</TableHead>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
-              ) : employees.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4">
-                    Data tidak ditemukan.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                employees.map((emp) => (
-                  <TableRow key={emp.id}>
-                    <TableCell className="font-medium">{emp.name}</TableCell>
-                    <TableCell>{emp.username}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={emp.role === "admin" ? "default" : "secondary"}
-                      >
-                        {emp.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(emp.created_at).toLocaleDateString("id-ID")}
-                    </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEdit(emp)}
-                      >
-                        <Pencil className="h-4 w-4 text-amber-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-red-500"
-                        onClick={() => handleDelete(emp.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center h-24">
+                      Memuat data...
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : employees.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center h-24">
+                      Tidak ada data pegawai.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  employees.map((emp) => (
+                    <TableRow key={emp.ID}>
+                      <TableCell className="font-medium">{emp.Name}</TableCell>
+                      <TableCell>{emp.Username}</TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize
+                                ${
+                                  emp.Role === "superadmin"
+                                    ? "bg-red-100 text-red-800"
+                                    : emp.Role === "admin"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-green-100 text-green-800"
+                                }`}
+                        >
+                          {emp.Role}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedEmployee(emp);
+                              setIsDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4 text-blue-500" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(emp.ID)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
-      <EmployeeFormDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        onSuccess={fetchEmployees}
-        employeeToEdit={selectedEmp}
-      />
+      {/* Create/Edit */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedEmployee ? "Edit Pegawai" : "Tambah Pegawai Baru"}
+            </DialogTitle>
+          </DialogHeader>
+          <EmployeeFormDialog
+            employee={selectedEmployee}
+            onSuccess={handleSuccess}
+            onCancel={() => setIsDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

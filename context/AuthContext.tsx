@@ -1,85 +1,117 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { Employee } from "@/types";
-import { employeeAPI, authAPI } from "@/lib/api";
-import { useRouter, usePathname } from "next/navigation";
-import Cookies from "js-cookie";
+import { useRouter } from "next/navigation";
+import { authAPI, employeeAPI } from "@/lib/api";
+import { UserProfile } from "@/types";
 
 interface AuthContextType {
-  user: Employee | null;
-  loading: boolean;
-  login: (token: string) => Promise<void>;
+  isAuthenticated: boolean;
+  user: UserProfile | null;
+  login: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<Employee | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const pathname = usePathname();
 
-  const refreshProfile = async () => {
+  const logout = async () => {
     try {
-      const userData = await employeeAPI.me();
-      setUser(userData);
-    } catch (error) {
-      console.error("Failed to fetch profile:", error);
-      setUser(null);
-      if (pathname !== "/login") {
-        router.push("/login");
+      const refreshToken = localStorage.getItem("refresh_token");
+      if (refreshToken) {
+        await authAPI.logout(refreshToken);
       }
+    } catch (error) {
+      console.error("Logout error (server side):", error);
+    } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refresh_token");
+      document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+
+      setUser(null);
+      setIsAuthenticated(false);
+      router.push("/login");
     }
+  };
+
+  const refreshProfile = async (token?: string) => {
+    try {
+      console.log(
+        "🔄 refreshProfile called with token:",
+        token ? "PASSED ✅" : "will use localStorage"
+      );
+      const response = await employeeAPI.getMe(token);
+      if (response && response.data) {
+        const backendData = response.data;
+        setUser({
+          ID: backendData.id,
+          Name: backendData.name,
+          Username: backendData.username,
+          Role: backendData.role,
+        });
+        setIsAuthenticated(true);
+        console.log("✅ Profile loaded successfully:", backendData.name);
+      }
+    } catch (error) {
+      console.error("❌ Gagal load profile", error);
+      logout();
+    }
+  };
+
+  const login = async (accessToken: string, refreshToken: string) => {
+    console.log("🔐 Login called - Saving tokens to localStorage...");
+    localStorage.setItem("token", accessToken);
+    localStorage.setItem("refresh_token", refreshToken);
+    document.cookie = `token=${accessToken}; path=/; max-age=86400; SameSite=Strict`;
+    console.log(
+      "💾 Tokens saved. Now calling refreshProfile with direct token..."
+    );
+
+    setIsAuthenticated(true);
+    await refreshProfile(accessToken); // ✅ Pass token directly!
+    console.log("🚀 Redirecting to dashboard...");
+    router.push("/dashboard");
   };
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = Cookies.get("access_token");
-      if (!token) {
-        setLoading(false);
-        if (pathname !== "/login") router.push("/login");
-        return;
+      const token = localStorage.getItem("token");
+      if (token) {
+        await refreshProfile();
       }
-      await refreshProfile();
-      setLoading(false);
+      setIsLoading(false);
     };
 
     initAuth();
-    // Hanya run sekali saat component mount, bukan setiap pathname berubah
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const login = async (accessToken: string) => {
-    // Token sudah disimpan oleh authAPI.login() di lib/api.ts
-    // Tunggu profile loaded sebelum redirect
-    await refreshProfile();
-    router.push("/dashboard");
-  };
-
-  const logout = async () => {
-    try {
-      await authAPI.logout();
-    } catch (err) {
-      console.error(err);
-    }
-    setUser(null);
-    router.push("/login");
-  };
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, logout, refreshProfile }}
+      value={{
+        isAuthenticated,
+        user,
+        login,
+        logout,
+        refreshProfile,
+        isLoading,
+      }}
     >
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
   return context;
-};
+}

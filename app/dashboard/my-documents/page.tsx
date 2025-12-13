@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { documentStaffAPI, getErrorMessage } from "@/lib/api";
+import { documentAPI, getErrorMessage } from "@/lib/api";
 import { DocumentStaff } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,8 +26,8 @@ export default function MyDocumentsPage() {
   const fetchDocuments = async () => {
     try {
       setLoading(true);
-      const data = await documentStaffAPI.getMyDocuments();
-      setDocuments(data);
+      const response = await documentAPI.getMyDocuments();
+      setDocuments(response.data);
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -42,7 +42,7 @@ export default function MyDocumentsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Yakin ingin menghapus dokumen ini?")) return;
     try {
-      await documentStaffAPI.delete(id);
+      await documentAPI.delete(id);
       toast.success("Dokumen dihapus");
       fetchDocuments();
     } catch (error) {
@@ -98,20 +98,21 @@ export default function MyDocumentsPage() {
                 </TableRow>
               ) : (
                 documents.map((doc) => (
-                  <TableRow key={doc.id}>
-                    <TableCell className="font-medium">{doc.subject}</TableCell>
+                  <TableRow key={doc.ID}>
+                    <TableCell className="font-medium">{doc.Subject}</TableCell>
                     <TableCell>
                       <a
-                        href={doc.file_url}
+                        href={doc.FileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center hover:underline text-blue-600"
                       >
-                        <FileText className="mr-2 h-4 w-4" /> {doc.file_name}
+                        <FileText className="mr-2 h-4 w-4" />{" "}
+                        {doc.FileUrl.split("/").pop()}
                       </a>
                     </TableCell>
                     <TableCell>
-                      {new Date(doc.created_at).toLocaleDateString("id-ID")}
+                      {new Date(doc.CreatedAt).toLocaleDateString("id-ID")}
                     </TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button
@@ -124,7 +125,7 @@ export default function MyDocumentsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(doc.id)}
+                        onClick={() => handleDelete(doc.ID)}
                       >
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>

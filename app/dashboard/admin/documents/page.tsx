@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { documentStaffAPI, getErrorMessage } from "@/lib/api";
-import { DocumentStaff } from "@/types";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { documentAPI } from "@/lib/api";
+import { DocumentStaff, DocumentAdminInput } from "@/types";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -13,115 +12,190 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { toast } from "sonner";
-import { Pencil, Trash2, FileText } from "lucide-react";
-import DocumentFormDialog from "@/components/ui/documents/DocumentFormDialog";
-import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Search,
+  Trash2,
+  Pencil,
+  FileText,
+  User as UserIcon,
+} from "lucide-react";
+import { Label } from "@/components/ui/label";
 
 export default function AdminDocumentsPage() {
   const [documents, setDocuments] = useState<DocumentStaff[]>([]);
+  const [filteredDocs, setFilteredDocs] = useState<DocumentStaff[]>([]);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState<DocumentStaff | null>(null);
-  const { user } = useAuth();
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<DocumentStaff | null>(null);
+  const [editSubject, setEditSubject] = useState("");
 
-  const fetchDocuments = async () => {
+  const fetchDocs = async () => {
+    setLoading(true);
     try {
-      const data = await documentStaffAPI.getAllAdmin();
-      setDocuments(data);
+      const res = await documentAPI.getAllAdmin();
+      if (res.status) {
+        setDocuments(res.data);
+        setFilteredDocs(res.data);
+      }
     } catch (error) {
-      toast.error(getErrorMessage(error));
+      toast.error("Gagal memuat semua dokumen");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user?.role === "admin") {
-      fetchDocuments();
-    }
-  }, [user]);
+    fetchDocs();
+  }, []);
+  useEffect(() => {
+    const lowerSearch = search.toLowerCase();
+    const filtered = documents.filter(
+      (doc) =>
+        doc.Subject.toLowerCase().includes(lowerSearch) ||
+        doc.User?.Name?.toLowerCase().includes(lowerSearch) ||
+        doc.Employee?.Name?.toLowerCase().includes(lowerSearch)
+    );
+    setFilteredDocs(filtered);
+  }, [search, documents]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Admin: Yakin hapus dokumen ini?")) return;
+    if (!confirm("Admin: Yakin hapus dokumen ini permanen?")) return;
     try {
-      await documentStaffAPI.delete(id);
-      toast.success("Dokumen dihapus");
-      fetchDocuments();
-    } catch (error) {
-      toast.error(getErrorMessage(error));
+      await documentAPI.delete(id);
+      toast.success("Dokumen berhasil dihapus");
+      fetchDocs();
+    } catch {
+      toast.error("Gagal menghapus dokumen");
     }
   };
 
   const openEdit = (doc: DocumentStaff) => {
-    setSelectedDoc(doc);
-    setIsDialogOpen(true);
+    setEditingDoc(doc);
+    setEditSubject(doc.Subject);
+    setIsEditOpen(true);
   };
 
-  if (user?.role !== "admin") return <div className="p-8">Akses ditolak.</div>;
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDoc) return;
+
+    try {
+      const payload: DocumentAdminInput = { subject: editSubject };
+      await documentAPI.updateAdmin(editingDoc.ID, payload);
+      toast.success("Dokumen diperbarui");
+      setIsEditOpen(false);
+      fetchDocs();
+    } catch {
+      toast.error("Gagal update dokumen");
+    }
+  };
 
   return (
-    <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold tracking-tight">
-        Manajemen Semua Dokumen
-      </h1>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+          Semua Dokumen Arsip
+        </h2>
+        <p className="text-gray-500">
+          Monitoring seluruh dokumen yang masuk ke sistem.
+        </p>
+      </div>
+
       <Card>
-        <CardHeader>
-          <CardTitle>Daftar Dokumen Staff</CardTitle>
+        <CardHeader className="pb-3">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              placeholder="Cari Judul atau Nama Pengupload..."
+              className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Pemilik (Employee ID)</TableHead>
-                <TableHead>Perihal</TableHead>
+                <TableHead>Pengupload</TableHead>
+                <TableHead>Judul Dokumen</TableHead>
+                <TableHead>Tanggal</TableHead>
                 <TableHead>File</TableHead>
-                <TableHead>Tgl Upload</TableHead>
                 <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">
+                  <TableCell colSpan={5} className="text-center h-24">
                     Loading...
                   </TableCell>
                 </TableRow>
+              ) : filteredDocs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center h-24">
+                    Tidak ada data.
+                  </TableCell>
+                </TableRow>
               ) : (
-                documents.map((doc) => (
-                  <TableRow key={doc.id}>
+                filteredDocs.map((doc) => (
+                  <TableRow key={doc.ID}>
                     <TableCell>
-                      {doc.employee_id ?? doc.user_id ?? "-"}
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
+                          <UserIcon className="h-4 w-4 text-slate-500" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-sm">
+                            {doc.User?.Name || doc.Employee?.Name || "Unknown"}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {doc.User?.Role || doc.Employee?.Role || "-"}
+                          </span>
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell>{doc.subject}</TableCell>
+                    <TableCell className="font-medium">{doc.Subject}</TableCell>
+                    <TableCell>
+                      {new Date(doc.CreatedAt).toLocaleDateString("id-ID")}
+                    </TableCell>
                     <TableCell>
                       <a
-                        href={doc.file_url}
+                        href={doc.FileUrl}
                         target="_blank"
-                        className="flex items-center hover:underline text-blue-600"
+                        rel="noreferrer"
+                        className="inline-flex items-center text-blue-600 hover:underline text-sm"
                       >
-                        <FileText className="mr-2 h-4 w-4" /> Buka
+                        <FileText className="mr-1 h-3 w-3" /> Buka
                       </a>
                     </TableCell>
-                    <TableCell>
-                      {new Date(doc.created_at).toLocaleDateString("id-ID")}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEdit(doc)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-red-500"
-                        onClick={() => handleDelete(doc.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEdit(doc)}
+                        >
+                          <Pencil className="h-4 w-4 text-orange-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(doc.ID)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -131,13 +205,33 @@ export default function AdminDocumentsPage() {
         </CardContent>
       </Card>
 
-      <DocumentFormDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        onSuccess={fetchDocuments}
-        documentToEdit={selectedDoc}
-        isAdminMode={true}
-      />
+      {/* Edit Admin */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Dokumen (Admin Mode)</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdate} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Judul Dokumen</Label>
+              <Input
+                value={editSubject}
+                onChange={(e) => setEditSubject(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditOpen(false)}
+              >
+                Batal
+              </Button>
+              <Button type="submit">Simpan Perubahan</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

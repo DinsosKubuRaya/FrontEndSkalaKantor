@@ -1,21 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { documentAPI, getErrorMessage } from "@/lib/api";
+import { DocumentStaff } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { documentStaffAPI, getErrorMessage } from "@/lib/api";
-import { DocumentStaff } from "@/types";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
-interface DocumentFormDialogProps {
+interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -23,21 +17,21 @@ interface DocumentFormDialogProps {
   isAdminMode?: boolean;
 }
 
-export default function DocumentFormDialog({
-  isOpen,
-  onClose,
-  onSuccess,
+export default function DocumentFormDialog({ 
+  isOpen, 
+  onClose, 
+  onSuccess, 
   documentToEdit,
-  isAdminMode = false,
-}: DocumentFormDialogProps) {
+  isAdminMode = false 
+}: Props) {
   const [subject, setSubject] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (documentToEdit) {
-      setSubject(documentToEdit.subject);
-      setFile(null);
+      setSubject(documentToEdit.Subject);
+      setFile(null); // File tidak bisa di-prefill
     } else {
       setSubject("");
       setFile(null);
@@ -46,80 +40,66 @@ export default function DocumentFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    const formData = new FormData();
-    formData.append("subject", subject);
-    if (file) {
-      formData.append("file", file);
-    }
+    setLoading(true);
 
     try {
       if (documentToEdit) {
-        if (isAdminMode) {
-          await documentStaffAPI.updateAdmin(documentToEdit.id, formData);
-        } else {
-          await documentStaffAPI.updateMyDocument(documentToEdit.id, formData);
-        }
-        toast.success("Dokumen berhasil diperbarui");
+        // Update mode
+        await documentAPI.updateSelf(documentToEdit.ID, { subject, file });
+        toast.success("Dokumen berhasil diupdate");
       } else {
-        if (!file) {
-          toast.error("File wajib diunggah");
-          setIsLoading(false);
-          return;
-        }
-        await documentStaffAPI.upload(formData);
-        toast.success("Dokumen berhasil diunggah");
+        // Create mode
+        await documentAPI.uploadSelf({ subject, file });
+        toast.success("Dokumen berhasil diupload");
       }
       onSuccess();
       onClose();
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-106.25">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
             {documentToEdit ? "Edit Dokumen" : "Upload Dokumen Baru"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="subject">Perihal / Subjek</Label>
+            <Label>Judul Dokumen</Label>
             <Input
-              id="subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
+              placeholder="Contoh: Laporan Bulanan..."
               required
-              placeholder="Contoh: Laporan Bulanan"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="file">
-              File Dokumen {documentToEdit && "(Opsional)"}
-            </Label>
+            <Label>File (PDF/Gambar)</Label>
             <Input
-              id="file"
               type="file"
-              onChange={(e) =>
-                setFile(e.target.files ? e.target.files[0] : null)
-              }
+              onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
               required={!documentToEdit}
             />
+            {documentToEdit && (
+              <p className="text-xs text-gray-500">
+                Kosongkan jika tidak ingin mengubah file
+              </p>
+            )}
           </div>
-          <DialogFooter>
+          <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Batal
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Memproses..." : "Simpan"}
+            <Button type="submit" disabled={loading}>
+              {loading ? "Memproses..." : documentToEdit ? "Update" : "Upload"}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

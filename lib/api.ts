@@ -1,162 +1,189 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import Cookies from "js-cookie";
-import { Employee, LoginResponse, DocumentStaff } from "@/types";
+import axios, { AxiosError } from "axios";
+import {
+  LoginResponse,
+  UserProfile,
+  Employee,
+  EmployeeInput,
+  EmployeeMeInput,
+  ChangePasswordInput,
+  DocumentStaff,
+  DocumentAdminInput,
+  DocumentSelfInput,
+  ApiResponse,
+  EmployeeBackendData
+} from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-export const api = axios.create({
+const api = axios.create({
   baseURL: API_URL,
-  withCredentials: true, 
-  headers: {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  },
 });
 
-// --- INTERCEPTORS ---
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = Cookies.get("access_token");
-  if (token) {
-    config.headers.set("Authorization", `Bearer ${token}`);
+// Interceptor
+api.interceptors.request.use((config) => {
+  // Check if Authorization header already exists (e.g., passed directly)
+  const existingAuth = config.headers.Authorization;
+  
+  if (existingAuth) {
+    console.log("🔍 Axios Interceptor - Authorization header ALREADY SET (from direct pass) ✅");
+    console.log("📤 Final header will be:", existingAuth);
+    return config; // Skip interceptor, use the passed header
   }
-  if (config.data instanceof FormData) {
-    config.headers.delete("Content-Type");
+  
+  // Only add token from localStorage if no Authorization header exists
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("token");
+    console.log("🔍 Axios Interceptor - Token from localStorage:", token ? "EXISTS ✅" : "NULL ❌");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log("📤 Final header set from localStorage");
+    }
   }
-
   return config;
 });
-api.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      const isAuthEndpoint = error.config?.url?.includes("/auth/login");
-      
-      if (!isAuthEndpoint) {
-        // Hapus token yang invalid
-        Cookies.remove("access_token");
-        Cookies.remove("refresh_token");
-        // Biarkan AuthContext yang handle redirect, jangan hard redirect di sini
-        // Ini mencegah double redirect dan race condition
-      }
-    }
-    return Promise.reject(error);
-  }
-);
 
-// --- API ---
+// Helper Error Message
+export const getErrorMessage = (error: unknown): string => {
+  if (error instanceof AxiosError) {
+    return (
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      error.message
+    );
+  }
+  return String(error);
+};
+
+// --- AUTH API ---
 export const authAPI = {
   login: async (username: string, password: string): Promise<LoginResponse> => {
-    const response = await api.post<LoginResponse>("/api/auth/login", {
-      username,
-      password,
-    });
-    if (response.data.access_token) {
-      Cookies.set("access_token", response.data.access_token, { expires: 1 }); 
-      Cookies.set("refresh_token", response.data.refresh_token, { expires: 7 }); 
-    }
-    return response.data;
+    const formData = new FormData();
+    formData.append("username", username);
+    formData.append("password", password);
+    const { data } = await api.post<LoginResponse>("/api/auth/login", formData);
+    return data;
+  },
+  logout: async (refresh_token: string): Promise<ApiResponse<void>> => {
+    const formData = new FormData();
+    formData.append("refresh_token", refresh_token); 
+    const { data } = await api.post<ApiResponse<void>>("/api/auth/logout", formData);
+    return data;
   },
 
-  refresh: async (refreshToken: string): Promise<LoginResponse> => {
-    const response = await api.post<LoginResponse>("/api/auth/refresh", {
-      refresh_token: refreshToken,
-    });
-    return response.data;
-  },
+  refreshToken: async (refresh_token: string): Promise<LoginResponse> => {
+    const formData = new FormData();
+    formData.append("refresh_token", refresh_token);
 
-  logout: async (): Promise<void> => {
-    try {
-      await api.post("/api/auth/logout");
-    } finally {
-      Cookies.remove("access_token");
-      Cookies.remove("refresh_token");
-    }
+    const { data } = await api.post<LoginResponse>("/api/auth/refresh", formData);
+    return data;
   },
 };
 
 // --- EMPLOYEE ---
 export const employeeAPI = {
-  me: async (): Promise<Employee> => {
-    const response = await api.get<any>("/api/employee/me");
-    // Backend bisa return { profile: {...} } atau langsung {...}
-    // Handle kedua format untuk compatibility
-    return response.data.profile || response.data;
+  create: async (payload: EmployeeInput): Promise<ApiResponse<Employee>> => {
+    const formData = new FormData();
+    formData.append("name", payload.name);
+    formData.append("username", payload.username);
+    if (payload.password) formData.append("password", payload.password);
+    if (payload.role) formData.append("role", payload.role);
+    const { data } = await api.post<ApiResponse<Employee>>("/api/employee/", formData);
+    return data;
   },
-  updateMe: async (data: { name?: string; username?: string }): Promise<Employee> => {
-    const response = await api.patch<Employee>("/api/employee/me", data);
-    return response.data;
+  search: async (name: string): Promise<ApiResponse<Employee[]>> => {
+    const { data } = await api.get<ApiResponse<Employee[]>>(`/api/employee/search?name=${name}`);
+    return data;
   },
-  changePassword: async (oldPass: string, newPass: string): Promise<void> => {
-    await api.patch("/api/employee/me/change-password", {
-      old_password: oldPass,
-      new_password: newPass,
-    });
+  getAll: async (): Promise<ApiResponse<Employee[]>> => {
+    const { data } = await api.get<ApiResponse<Employee[]>>("/api/employee/");
+    return data;
   },
-  create: async (data: Pick<Employee, 'name' | 'username' | 'role'> & { password: string }): Promise<Employee> => {
-    const response = await api.post<Employee>("/api/employee/", data);
-    return response.data;
+  getById: async (id: string): Promise<ApiResponse<Employee>> => {
+    const { data } = await api.get<ApiResponse<Employee>>(`/api/employee/${id}`);
+    return data;
   },
-  search: async (name: string): Promise<Employee[]> => {
-    const response = await api.get<Employee[]>("/api/employee/search", {
-      params: { name },
-    });
-    return response.data;
+  update: async (id: string, payload: Partial<EmployeeInput>): Promise<ApiResponse<Employee>> => {
+    const formData = new FormData();
+    if (payload.name) formData.append("name", payload.name);
+    if (payload.username) formData.append("username", payload.username);
+    if (payload.role) formData.append("role", payload.role);
+    const { data } = await api.patch<ApiResponse<Employee>>(`/api/employee/${id}`, formData);
+    return data;
   },
-  getAll: async (): Promise<Employee[]> => {
-    const response = await api.get<Employee[]>("/api/employee/");
-    return response.data;
+  delete: async (id: string): Promise<ApiResponse<void>> => {
+    const { data } = await api.delete<ApiResponse<void>>(`/api/employee/${id}`);
+    return data;
   },
-  update: async (id: string, data: Partial<Employee>): Promise<Employee> => {
-    const response = await api.patch<Employee>(`/api/employee/${id}`, data);
-    return response.data;
+  getMe: async (token?: string): Promise<ApiResponse<EmployeeBackendData>> => {
+    const config = token ? {
+      headers: { Authorization: `Bearer ${token}` }
+    } : {};
+    console.log("🎯 employeeAPI.getMe called with token:", token ? "PASSED DIRECTLY ✅" : "from interceptor");
+    const { data } = await api.get<ApiResponse<EmployeeBackendData>>("/api/employee/me", config);
+    return data;
   },
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`/api/employee/${id}`);
+  updateMe: async (payload: EmployeeMeInput): Promise<ApiResponse<Employee>> => {
+    const formData = new FormData();
+    formData.append("name", payload.name);
+    formData.append("username", payload.username);
+    const { data } = await api.patch<ApiResponse<Employee>>("/api/employee/me", formData);
+    return data;
+  },
+  changePassword: async (payload: ChangePasswordInput): Promise<ApiResponse<void>> => {
+    const formData = new FormData();
+    formData.append("current_password", payload.current_password);
+    formData.append("new_password", payload.new_password);
+    formData.append("confirm_password", payload.confirm_password);
+
+    const { data } = await api.patch<ApiResponse<void>>("/api/employee/me/change-password", formData);
+    return data;
   },
 };
 
 // --- DOCUMENT STAFF ---
-export const documentStaffAPI = {
-
-  upload: async (formData: FormData): Promise<DocumentStaff> => {
-    const response = await api.post<DocumentStaff>("/api/document_staff/upload", formData);
-    return response.data;
+export const documentAPI = {
+  createAdmin: async (payload: DocumentAdminInput): Promise<ApiResponse<DocumentStaff>> => {
+    const formData = new FormData();
+    formData.append("subject", payload.subject);
+    if (payload.user_id) formData.append("user_id", payload.user_id);
+    if (payload.employee_id) formData.append("employee_id", payload.employee_id);
+    if (payload.file) formData.append("file", payload.file);
+    const { data } = await api.post<ApiResponse<DocumentStaff>>("/api/document_staff/", formData);
+    return data;
   },
-  getMyDocuments: async (): Promise<DocumentStaff[]> => {
-    const response = await api.get<DocumentStaff[]>("/api/document_staff/my-documents");
-    return response.data;
+  uploadSelf: async (payload: DocumentSelfInput): Promise<ApiResponse<DocumentStaff>> => {
+    const formData = new FormData();
+    formData.append("subject", payload.subject);
+    if (payload.file) formData.append("file", payload.file);
+    const { data } = await api.post<ApiResponse<DocumentStaff>>("/api/document_staff/upload", formData);
+    return data;
   },
-  updateMyDocument: async (id: string, formData: FormData): Promise<DocumentStaff> => {
-    const response = await api.patch<DocumentStaff>(`/api/document_staff/my-documents/${id}`, formData);
-    return response.data;
+  getAllAdmin: async (): Promise<ApiResponse<DocumentStaff[]>> => {
+    const { data } = await api.get<ApiResponse<DocumentStaff[]>>("/api/document_staff/");
+    return data;
   },
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`/api/document_staff/${id}`);
+  getMyDocuments: async (): Promise<ApiResponse<DocumentStaff[]>> => {
+    const { data } = await api.get<ApiResponse<DocumentStaff[]>>("/api/document_staff/my-documents");
+    return data;
   },
-
-  // --- Fitur Admin ---
-  createAdmin: async (formData: FormData): Promise<DocumentStaff> => {
-    const response = await api.post<DocumentStaff>("/api/document_staff/", formData);
-    return response.data;
+  updateAdmin: async (id: string, payload: DocumentAdminInput): Promise<ApiResponse<DocumentStaff>> => {
+    const formData = new FormData();
+    formData.append("subject", payload.subject);
+    if (payload.user_id) formData.append("user_id", payload.user_id);
+    if (payload.employee_id) formData.append("employee_id", payload.employee_id);
+    if (payload.file) formData.append("file", payload.file);
+    const { data } = await api.patch<ApiResponse<DocumentStaff>>(`/api/document_staff/${id}`, formData);
+    return data;
   },
-  getAllAdmin: async (): Promise<DocumentStaff[]> => {
-    const response = await api.get<DocumentStaff[]>("/api/document_staff/");
-    return response.data;
+  updateSelf: async (id: string, payload: DocumentSelfInput): Promise<ApiResponse<DocumentStaff>> => {
+    const formData = new FormData();
+    formData.append("subject", payload.subject);
+    if (payload.file) formData.append("file", payload.file);
+    const { data } = await api.patch<ApiResponse<DocumentStaff>>(`/api/document_staff/my-documents/${id}`, formData);
+    return data;
   },
-  updateAdmin: async (id: string, formData: FormData): Promise<DocumentStaff> => {
-    const response = await api.patch<DocumentStaff>(`/api/document_staff/${id}`, formData);
-    return response.data;
+  delete: async (id: string): Promise<ApiResponse<void>> => {
+    const { data } = await api.delete<ApiResponse<void>>(`/api/document_staff/${id}`);
+    return data;
   },
 };
-
-// --- HELPER ---
-export function getErrorMessage(error: unknown): string {
-  if (axios.isAxiosError(error) && error.response) {
-    const data = error.response.data as { error?: string; message?: string };
-    return data.error || data.message || `Terjadi kesalahan (Status: ${error.response.status})`;
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return "Terjadi kesalahan yang tidak diketahui";
-}

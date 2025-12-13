@@ -28,9 +28,9 @@ export default function LoginPage() {
 
     try {
       const response = await authAPI.login(username, password);
-      toast.success("Login berhasil");
-      // Await login untuk tunggu profile loaded sebelum redirect
-      await login(response.access_token);
+      if (response.access_token && response.refresh_token) {
+        await login(response.access_token, response.refresh_token);
+      }
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {

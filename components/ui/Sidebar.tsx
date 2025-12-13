@@ -3,111 +3,154 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Users, 
-  User, 
+import {
+  LayoutDashboard,
+  Users,
+  FileText,
+  FolderOpen,
   LogOut,
-  Files,
-  BarChart3
+  Settings,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-
-  const menuItems = [
-    {
-      label: "Dashboard",
-      href: "/dashboard",
-      icon: LayoutDashboard,
-      roles: ["admin", "staff"]
-    },
-    {
-      label: "Dokumen Saya",
-      href: "/dashboard/my-documents",
-      icon: FileText,
-      roles: ["admin", "staff"]
-    },
-    {
-      label: "Semua Dokumen",
-      href: "/dashboard/admin/documents",
-      icon: Files,
-      roles: ["admin"]
-    },
-    {
-      label: "Kelola Pegawai",
-      href: "/dashboard/admin/employees",
-      icon: Users,
-      roles: ["admin"]
-    },
-    {
-      label: "Laporan",
-      href: "/dashboard/reports",
-      icon: BarChart3,
-      roles: ["admin"]
-    },
-    {
-      label: "Profil",
-      href: "/dashboard/profile",
-      icon: User,
-      roles: ["admin", "staff"]
-    }
-  ];
-
-  const filteredMenu = menuItems.filter(item => 
-    item.roles.includes(user?.role || "staff")
-  );
+  const isActive = (path: string) => pathname === path;
+  const renderRoleBadge = () => {
+    if (!user) return null;
+    const colors = {
+      superadmin: "bg-red-500",
+      admin: "bg-blue-500",
+      staff: "bg-green-500",
+    };
+    return (
+      <span
+        className={`text-xs px-2 py-0.5 rounded-full ${
+          colors[user.Role] || "bg-gray-500"
+        } text-white capitalize`}
+      >
+        {user.Role}
+      </span>
+    );
+  };
 
   return (
-    <aside className="w-64 bg-white shadow-md flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b">
-        <h1 className="text-xl font-bold text-gray-800">Arsip Digital</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {user?.name || "User"}
-        </p>
-        <span className="inline-block mt-1 px-2 py-1 text-xs rounded bg-blue-100 text-blue-700">
-          {user?.role === "admin" ? "Administrator" : "Staff"}
-        </span>
+    <div className="flex h-screen w-64 flex-col bg-slate-900 text-white border-r border-slate-800">
+      {/* Header Sidebar */}
+      <div className="flex h-20 items-center gap-3 px-6 border-b border-slate-800">
+        <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
+          <FileText className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h1 className="text-lg font-bold leading-none">Arsip Digital</h1>
+          <span className="text-xs text-slate-400">Kantor Dinsos</span>
+        </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
-        {filteredMenu.map((item) => {
-          const isActive = pathname === item.href;
-          const Icon = item.icon;
-          
-          return (
+      {/* User Info  */}
+      <div className="px-6 py-4 bg-slate-800/50 mb-2">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center text-lg font-bold">
+            {user?.Name?.charAt(0) || "U"}
+          </div>
+          <div className="overflow-hidden">
+            <p className="text-sm font-medium truncate">{user?.Name}</p>
+            {renderRoleBadge()}
+          </div>
+        </div>
+      </div>
+
+      {/* Navigasi */}
+      <nav className="flex-1 space-y-1 px-3 py-2 overflow-y-auto">
+        <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-2">
+          Menu Utama
+        </p>
+
+        <Link
+          href="/dashboard"
+          className={`group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+            isActive("/dashboard")
+              ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+              : "text-slate-300 hover:bg-slate-800 hover:text-white"
+          }`}
+        >
+          <LayoutDashboard className="mr-3 h-5 w-5" />
+          Dashboard
+        </Link>
+
+        {/* Menu Admin / Superadmin */}
+        {(user?.Role === "admin" || user?.Role === "superadmin") && (
+          <>
+            <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-6">
+              Administrator
+            </p>
             <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive
-                  ? "bg-blue-50 text-blue-700 font-medium"
-                  : "text-gray-700 hover:bg-gray-100"
+              href="/dashboard/admin/employees"
+              className={`group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                isActive("/dashboard/admin/employees")
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
               }`}
             >
-              <Icon className="h-5 w-5" />
-              <span>{item.label}</span>
+              <Users className="mr-3 h-5 w-5" />
+              Manajemen Staff
             </Link>
-          );
-        })}
+            <Link
+              href="/dashboard/admin/documents"
+              className={`group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                isActive("/dashboard/admin/documents")
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
+              }`}
+            >
+              <Shield className="mr-3 h-5 w-5" />
+              Semua Dokumen
+            </Link>
+          </>
+        )}
+
+        <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-6">
+          Pribadi
+        </p>
+
+        <Link
+          href="/dashboard/my-documents"
+          className={`group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+            isActive("/dashboard/my-documents")
+              ? "bg-blue-600 text-white"
+              : "text-slate-300 hover:bg-slate-800 hover:text-white"
+          }`}
+        >
+          <FolderOpen className="mr-3 h-5 w-5" />
+          Dokumen Saya
+        </Link>
+
+        <Link
+          href="/dashboard/profile"
+          className={`group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+            isActive("/dashboard/profile")
+              ? "bg-blue-600 text-white"
+              : "text-slate-300 hover:bg-slate-800 hover:text-white"
+          }`}
+        >
+          <Settings className="mr-3 h-5 w-5" />
+          Pengaturan Profil
+        </Link>
       </nav>
 
-      {/* Logout Button */}
-      <div className="p-4 border-t">
+      {/* Logout */}
+      <div className="border-t border-slate-800 p-4">
         <Button
           onClick={logout}
-          variant="outline"
-          className="w-full justify-start gap-3"
+          variant="destructive"
+          className="w-full flex items-center justify-center gap-2"
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className="h-4 w-4" />
           Keluar
         </Button>
       </div>
-    </aside>
+    </div>
   );
 }

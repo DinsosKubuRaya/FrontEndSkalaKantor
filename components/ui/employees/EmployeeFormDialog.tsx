@@ -1,16 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { employeeAPI } from "@/lib/api";
+import { Employee, EmployeeInput, Role } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -18,133 +14,141 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { employeeAPI, getErrorMessage } from "@/lib/api";
-import { Employee } from "@/types";
-import { toast } from "sonner";
 
-interface EmployeeFormDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface Props {
+  employee?: Employee | null;
   onSuccess: () => void;
-  employeeToEdit?: Employee | null;
+  onCancel: () => void;
 }
 
 export default function EmployeeFormDialog({
-  isOpen,
-  onClose,
+  employee,
   onSuccess,
-  employeeToEdit,
-}: EmployeeFormDialogProps) {
-  const [name, setName] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"staff" | "admin">("staff");
-  const [isLoading, setIsLoading] = useState(false);
+  onCancel,
+}: Props) {
+  const [formData, setFormData] = useState<EmployeeInput>({
+    name: "",
+    username: "",
+    password: "",
+    role: "staff",
+  });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (employeeToEdit) {
-      setName(employeeToEdit.name);
-      setUsername(employeeToEdit.username);
-      setRole(employeeToEdit.role);
-      setPassword("");
+    if (employee) {
+      setFormData({
+        name: employee.Name,
+        username: employee.Username,
+        role: employee.Role,
+        password: "",
+      });
     } else {
-      setName("");
-      setUsername("");
-      setPassword("");
-      setRole("staff");
+      setFormData({ name: "", username: "", password: "", role: "staff" });
     }
-  }, [employeeToEdit, isOpen]);
+  }, [employee]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
 
     try {
-      if (employeeToEdit) {
-        await employeeAPI.update(employeeToEdit.id, { name, username, role });
-        toast.success("Pegawai berhasil diperbarui");
+      if (employee) {
+        await employeeAPI.update(employee.ID, formData);
+        toast.success("Data pegawai berhasil diperbarui");
       } else {
-        if (!password) {
+        if (!formData.password) {
           toast.error("Password wajib diisi untuk pegawai baru");
-          setIsLoading(false);
+          setLoading(false);
           return;
         }
-        await employeeAPI.create({ name, username, password, role });
-        toast.success("Pegawai berhasil dibuat");
+        await employeeAPI.create(formData);
+        toast.success("Pegawai baru berhasil ditambahkan");
       }
       onSuccess();
-      onClose();
     } catch (error) {
-      toast.error(getErrorMessage(error));
+      toast.error("Terjadi kesalahan saat menyimpan data");
+      console.error(error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-425px">
-        <DialogHeader>
-          <DialogTitle>
-            {employeeToEdit ? "Edit Pegawai" : "Tambah Pegawai Baru"}
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nama Lengkap</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-          </div>
-          {!employeeToEdit && (
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <Select
-              value={role}
-              onValueChange={(val: "staff" | "admin") => setRole(val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih Role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="staff">Staff</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Batal
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Menyimpan..." : "Simpan"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="name">Nama Lengkap</Label>
+        <Input
+          id="name"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="username">Username</Label>
+        <Input
+          id="username"
+          value={formData.username}
+          onChange={(e) =>
+            setFormData({ ...formData, username: e.target.value })
+          }
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="role">Role / Jabatan</Label>
+        <Select
+          value={formData.role}
+          onValueChange={(val) =>
+            setFormData({ ...formData, role: val as Role })
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Pilih Role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="staff">Staff</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="superadmin">Super Admin</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="password">
+          {employee ? "Password Baru (Opsional)" : "Password"}
+        </Label>
+        <Input
+          id="password"
+          type="password"
+          placeholder={employee ? "Biarkan kosong jika tidak diubah" : "******"}
+          value={formData.password}
+          onChange={(e) =>
+            setFormData({ ...formData, password: e.target.value })
+          }
+          required={!employee}
+        />
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={loading}
+        >
+          Batal
+        </Button>
+        <Button type="submit" disabled={loading}>
+          {loading
+            ? "Menyimpan..."
+            : employee
+            ? "Simpan Perubahan"
+            : "Tambah Pegawai"}
+        </Button>
+      </div>
+    </form>
   );
 }

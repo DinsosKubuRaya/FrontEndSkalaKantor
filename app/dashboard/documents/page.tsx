@@ -10,8 +10,7 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     if (user) {
-      // Redirect berdasarkan role
-      if (user.role === "admin") {
+      if (user.Role === "admin") {
         router.push("/dashboard/admin/documents");
       } else {
         router.push("/dashboard/my-documents");
