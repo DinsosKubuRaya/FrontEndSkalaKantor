@@ -10,10 +10,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
 import { documentAPI, getErrorMessage } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -22,60 +19,75 @@ interface Props {
     id: string;
     subject: string;
   };
+  isOpen?: boolean;
+  onClose?: () => void;
   onSuccess: () => void;
   variant?: "admin" | "staff";
 }
 
 export function DeleteDocumentDialog({
   document,
+  isOpen = false,
+  onClose,
   onSuccess,
   variant = "staff",
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
+    setLoading(true);
     try {
       await documentAPI.delete(document.id);
       toast.success("Dokumen berhasil dihapus");
-      setOpen(false);
       onSuccess();
+      if (onClose) onClose();
     } catch (error) {
       toast.error(getErrorMessage(error));
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && onClose) onClose();
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <Trash2 className="h-4 w-4 text-red-500" />
-        </Button>
-      </AlertDialogTrigger>
+    <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Hapus Dokumen?</AlertDialogTitle>
           <AlertDialogDescription>
             {variant === "admin" ? (
               <>
-                Tindakan ini tidak dapat dibatalkan. Dokumen{" "}
-                <b>&quot;{document.subject}&quot;</b> akan dihapus permanen dari
-                sistem.
+                Tindakan ini bersifat permanen. Dokumen{" "}
+                <span className="font-bold text-foreground">
+                  &quot;{document.subject}&quot;
+                </span>{" "}
+                akan dihapus dari sistem dan tidak dapat dipulihkan.
               </>
             ) : (
               <>
                 Apakah Anda yakin ingin menghapus dokumen{" "}
-                <b>&quot;{document.subject}&quot;</b>?
+                <span className="font-bold text-foreground">
+                  &quot;{document.subject}&quot;
+                </span>
+                ?
               </>
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Batal</AlertDialogCancel>
+          <AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
           <AlertDialogAction
-            onClick={handleDelete}
-            className="bg-red-600 hover:bg-red-700"
+            onClick={(e) => {
+              e.preventDefault();
+              handleDelete();
+            }}
+            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            disabled={loading}
           >
-            Hapus
+            {loading ? "Menghapus..." : "Ya, Hapus"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

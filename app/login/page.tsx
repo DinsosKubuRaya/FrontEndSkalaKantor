@@ -2,20 +2,15 @@
 
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { authAPI, getErrorMessage } from "@/lib/api";
+import { authAPI } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import Image from "next/image";
+import { Spinner } from "@/components/ui/spinner";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PasswordInput } from "@/components/ui/password-input";
+import Image from "next/image";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -31,60 +26,97 @@ export default function LoginPage() {
       const response = await authAPI.login(username, password);
       if (response.access_token && response.refresh_token) {
         await login(response.access_token, response.refresh_token);
+        toast.success("Login Berhasil", {
+          description: "Selamat datang kembali!",
+        });
       }
-    } catch (error) {
-      toast.error(getErrorMessage(error));
+    } catch (error: unknown) {
+      let msg = "Terjadi kesalahan";
+      if (error instanceof Error) msg = error.message;
+      toast.error("Login Gagal", { description: msg });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-24 h-24 relative mb-4">
-            {/* Logo */}
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-muted/30">
+      <div className="w-full max-w-100 animate-in fade-in zoom-in-95 duration-500">
+        <div className="text-center mb-8">
+          <div className="relative h-14 w-full mb-4">
             <Image
               src="/logodinsos.png"
-              alt="Logo"
+              alt="Logo Skala Kantor"
               fill
               className="object-contain"
+              priority
             />
           </div>
-          <CardTitle className="text-2xl font-bold">
-            Arsip Digital Kantor
-          </CardTitle>
-          <CardDescription>Masuk untuk mengelola dokumen</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                placeholder="Masukkan username..."
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <PasswordInput
-                id="password"
-                placeholder="Masukkan password..."
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Memproses..." : "Masuk"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+        </div>
+
+        <Card className="border-border/60 shadow-xl shadow-primary/5 rounded-3xl overflow-hidden bg-card">
+          <CardHeader className="pt-0" />
+          <CardContent className="p-8 pt-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-2">
+                <div className="justify-center items-center text-center mb-10">
+                  <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                    Sistem Arsip Digital
+                  </h1>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Masuk untuk mengakses dan mengelola dokumen
+                  </p>
+                </div>
+                <Label htmlFor="username" className="text-sm font-medium ml-1">
+                  Username
+                </Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Masukkan username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  className="rounded-xl h-12 bg-muted/30 border-2 focus:bg-background focus:border-primary/50 transition-all"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center ml-1">
+                  <Label htmlFor="password">Password</Label>
+                </div>
+                <PasswordInput
+                  id="password"
+                  placeholder="Masukkan password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="rounded-xl h-12 bg-muted/30 border-2 focus:bg-background focus:border-primary/50 transition-all"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-12 text-base font-medium rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all mt-2"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Spinner className="text-primary-foreground h-5 w-5" />
+                    <span>Memproses...</span>
+                  </div>
+                ) : (
+                  "Masuk Sekarang"
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <p className="text-center text-xs text-muted-foreground mt-8">
+          &copy; {new Date().getFullYear()} Mbowleeh. All rights reserved.
+        </p>
+      </div>
     </div>
   );
 }

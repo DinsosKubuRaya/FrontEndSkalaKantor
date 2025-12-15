@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Sidebar } from "@/components/ui/Sidebar";
+import { Header } from "@/components/ui/Header";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function DashboardLayout({
   children,
@@ -11,6 +13,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -21,22 +24,32 @@ export default function DashboardLayout({
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin text-2xl">⏳</div>
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Spinner className="h-10 w-10 text-primary" />
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <main className="md:pl-64 min-h-screen flex flex-col">
-        <div className="flex-1 p-4 md:p-8 pt-16 md:pt-8">{children}</div>
-      </main>
+    <div className="flex min-h-screen flex-col bg-secondary/30">
+      <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      <div className="flex flex-1 items-start">
+        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <main className="flex-1 w-full p-4 md:p-6 lg:p-8 overflow-y-auto h-[calc(100vh-4rem)]">
+          <div className="mx-auto max-w-7xl animate-in fade-in slide-in-from-bottom-3 duration-500">
+            {children}
+          </div>
+        </main>
+      </div>
+
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden animate-in fade-in"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
     </div>
   );
 }
