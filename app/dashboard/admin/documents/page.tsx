@@ -33,6 +33,7 @@ import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FileIcon } from "@/components/ui/file-icon";
 import { DocumentPreviewDialog } from "@/components/ui/documents/DocumentPreviewDialog";
+import { DeleteDocumentDialog } from "@/components/ui/documents/DeleteDocumentDialog";
 
 export default function AdminDocumentsPage() {
   const [documents, setDocuments] = useState<DocumentStaff[]>([]);
@@ -96,17 +97,6 @@ export default function AdminDocumentsPage() {
     setStartDate("");
     setEndDate("");
     setCurrentPage(1);
-  };
-
-  const handleDelete = async (id: string, subject: string) => {
-    if (!confirm(`Hapus dokumen "${subject}" secara permanen?`)) return;
-    try {
-      await documentAPI.delete(id);
-      toast.success("Dokumen berhasil dihapus");
-      fetchDocuments();
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
   };
 
   const activeFiltersCount = [
@@ -319,19 +309,12 @@ export default function AdminDocumentsPage() {
                             <Download className="h-4 w-4" />
                           </a>
                         </Button>
-                        <DocumentEditDialog
-                          document={doc}
+                        {/* Edit disabled for admin - backend limitation */}
+                        <DeleteDocumentDialog
+                          document={{ id: doc.id, subject: doc.subject }}
                           onSuccess={fetchDocuments}
-                          isAdmin={true}
+                          variant="admin"
                         />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(doc.id, doc.subject)}
-                          title="Hapus"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -376,18 +359,12 @@ export default function AdminDocumentsPage() {
                     </Button>
                   </div>
                   <div className="flex gap-1">
-                    <DocumentEditDialog
-                      document={doc}
+                    {/* Edit disabled for admin - backend limitation */}
+                    <DeleteDocumentDialog
+                      document={{ id: doc.id, subject: doc.subject }}
                       onSuccess={fetchDocuments}
-                      isAdmin={true}
+                      variant="admin"
                     />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(doc.id, doc.subject)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
                   </div>
                 </CardContent>
               </Card>

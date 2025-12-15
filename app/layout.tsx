@@ -31,14 +31,14 @@ export default function RootLayout({
       >
         <AuthProvider>
           {children}
-          <Toaster
-            position="top-right"
-            theme="dark"
-            richColors
-            closeButton
-            duration={3000}
-          />
         </AuthProvider>
+        <Toaster
+          position="top-right"
+          theme="dark"
+          richColors
+          closeButton
+          duration={3000}
+        />
       </body>
     </html>
   );

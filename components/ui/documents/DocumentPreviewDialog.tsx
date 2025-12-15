@@ -63,15 +63,16 @@ export function DocumentPreviewDialog({
 
         <div className="flex-1 overflow-hidden border rounded-lg bg-muted/30">
           {fileType === "image" ? (
-            <div className="flex items-center justify-center h-full p-4">
+            <div className="relative flex items-center justify-center h-full p-4">
               <Image
                 src={document.file_url}
                 alt={document.subject}
-                className="max-w-full max-h-full object-contain"
+                fill
+                className="object-contain"
                 onLoad={() => setIsLoading(false)}
               />
               {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
                 </div>
               )}

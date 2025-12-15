@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Sidebar } from "@/components/ui/Sidebar";
-import { Toaster } from "@/components/ui/sonner";
 
 export default function DashboardLayout({
   children,
@@ -38,8 +37,6 @@ export default function DashboardLayout({
       <main className="md:pl-64 min-h-screen flex flex-col">
         <div className="flex-1 p-4 md:p-8 pt-16 md:pt-8">{children}</div>
       </main>
-
-      <Toaster />
     </div>
   );
 }

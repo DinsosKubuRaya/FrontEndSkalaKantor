@@ -45,6 +45,9 @@ export interface Employee {
   UpdatedAt?: string;
 }
 
+
+export type EmployeeApiResponse = EmployeeBackendData | Employee;
+
 export interface EmployeeInput {
   name: string;
   username: string;

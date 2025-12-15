@@ -33,6 +33,7 @@ import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FileIcon } from "@/components/ui/file-icon";
 import { DocumentPreviewDialog } from "@/components/ui/documents/DocumentPreviewDialog";
+import { DeleteDocumentDialog } from "@/components/ui/documents/DeleteDocumentDialog";
 
 export default function MyDocumentsPage() {
   const [documents, setDocuments] = useState<DocumentStaff[]>([]);
@@ -89,17 +90,6 @@ export default function MyDocumentsPage() {
     setStartDate("");
     setEndDate("");
     setCurrentPage(1);
-  };
-
-  const handleDelete = async (id: string, subject: string) => {
-    if (!confirm(`Hapus dokumen "${subject}"?`)) return;
-    try {
-      await documentAPI.delete(id);
-      toast.success("Dokumen berhasil dihapus");
-      fetchDocuments();
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
   };
 
   const activeFiltersCount = [searchQuery, startDate, endDate].filter(
@@ -293,14 +283,11 @@ export default function MyDocumentsPage() {
                           onSuccess={fetchDocuments}
                           isAdmin={false}
                         />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(doc.id, doc.subject)}
-                          title="Hapus"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
+                        <DeleteDocumentDialog
+                          document={{ id: doc.id, subject: doc.subject }}
+                          onSuccess={fetchDocuments}
+                          variant="staff"
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -362,13 +349,11 @@ export default function MyDocumentsPage() {
                       onSuccess={fetchDocuments}
                       isAdmin={false}
                     />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(doc.id, doc.subject)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
+                    <DeleteDocumentDialog
+                      document={{ id: doc.id, subject: doc.subject }}
+                      onSuccess={fetchDocuments}
+                      variant="staff"
+                    />
                   </div>
                 </CardContent>
               </Card>

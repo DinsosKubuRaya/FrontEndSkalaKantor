@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { documentAPI, employeeAPI, getErrorMessage } from "@/lib/api";
-import { Employee } from "@/types";
+import { Employee, EmployeeBackendData, EmployeeApiResponse } from "@/types";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,21 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
+function normalizeEmployee(item: EmployeeApiResponse): Employee {
+  if ("ID" in item && item.ID) {
+    return item as Employee;
+  }
+
+  const backendData = item as EmployeeBackendData;
+  return {
+    ID: backendData.id,
+    Name: backendData.name,
+    Username: backendData.username,
+    Role: backendData.role,
+    CreatedAt: backendData.created_at,
+    UpdatedAt: backendData.updated_at,
+  };
+}
 interface Props {
   children: React.ReactNode;
   onSuccess: () => void;
@@ -45,10 +60,23 @@ export function DocumentUploadForm({
 
   useEffect(() => {
     if (isAdmin && open) {
-      employeeAPI.getAll().then((res) => {
-        const data = res.data || [];
-        setEmployees(Array.isArray(data) ? data : []);
-      });
+      employeeAPI
+        .getAll()
+        .then((res) => {
+          const rawData = res.data || [];
+          const mappedEmployees: Employee[] = Array.isArray(rawData)
+            ? rawData.map((item: EmployeeApiResponse) =>
+                normalizeEmployee(item)
+              )
+            : [];
+
+          setEmployees(mappedEmployees);
+        })
+        .catch((error) => {
+          console.error("Failed to load employees:", error);
+          toast.error("Gagal memuat daftar pegawai");
+          setEmployees([]);
+        });
     }
   }, [isAdmin, open]);
 
