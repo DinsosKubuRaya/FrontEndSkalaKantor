@@ -29,11 +29,23 @@ interface Props {
   children?: React.ReactNode;
   onSuccess: () => void;
   userToEdit?: Employee;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function EmployeeFormDialog({ children, onSuccess, userToEdit }: Props) {
-  const [open, setOpen] = useState(false);
+export function EmployeeFormDialog({ children, onSuccess, userToEdit, open: controlledOpen, onOpenChange }: Props) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Use controlled state if provided, otherwise use internal state
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const handleOpenChange = (newOpen: boolean) => {
+    if (onOpenChange) {
+      onOpenChange(newOpen);
+    } else {
+      setInternalOpen(newOpen);
+    }
+  };
 
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -88,7 +100,7 @@ export function EmployeeFormDialog({ children, onSuccess, userToEdit }: Props) {
         });
         toast.success("Pegawai berhasil dibuat");
       }
-      setOpen(false);
+      handleOpenChange(false);
       onSuccess();
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -98,16 +110,19 @@ export function EmployeeFormDialog({ children, onSuccess, userToEdit }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children ? (
-          children
-        ) : (
-          <Button variant="ghost" size="icon">
-            <Pencil className="h-4 w-4 text-blue-500" />
-          </Button>
-        )}
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {/* Only render trigger when in uncontrolled mode (has children or no controlled props) */}
+      {controlledOpen === undefined && (
+        <DialogTrigger asChild>
+          {children ? (
+            children
+          ) : (
+            <Button variant="ghost" size="icon">
+              <Pencil className="h-4 w-4 text-blue-500" />
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>

@@ -18,12 +18,16 @@ import { toast } from "sonner";
 import { Employee } from "@/types";
 
 interface Props {
-  user: Employee;
+  user: Employee | null;
   onSuccess: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function DeleteUserDialog({ user, onSuccess }: Props) {
+export function DeleteUserDialog({ user, onSuccess, open, onOpenChange }: Props) {
   const handleDelete = async () => {
+    if (!user) return;
+    
     try {
       await employeeAPI.delete(user.ID);
       toast.success(`Pegawai ${user.Name} berhasil dihapus`);
@@ -33,13 +37,10 @@ export function DeleteUserDialog({ user, onSuccess }: Props) {
     }
   };
 
+  if (!user) return null;
+
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <Trash2 className="h-4 w-4 text-red-500" />
-        </Button>
-      </AlertDialogTrigger>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Hapus Pegawai?</AlertDialogTitle>

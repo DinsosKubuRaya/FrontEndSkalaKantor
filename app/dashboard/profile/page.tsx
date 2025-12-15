@@ -15,9 +15,10 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Save, AlertCircle } from "lucide-react";
+import { User, Save, AlertCircle, CheckCircle2 } from "lucide-react";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function ProfilePage() {
   const { user, refreshProfile } = useAuth();
@@ -27,6 +28,8 @@ export default function ProfilePage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -42,6 +45,9 @@ export default function ProfilePage() {
       await employeeAPI.updateMe({ name, username });
       toast.success("Profil berhasil diperbarui");
       refreshProfile();
+      setLastUpdated(new Date());
+      setShowSuccessAlert(true);
+      setTimeout(() => setShowSuccessAlert(false), 5000);
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -100,6 +106,23 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Success Alert Banner */}
+              {showSuccessAlert && (
+                <Alert className="mb-4 bg-green-50 border-green-200 text-green-800">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertDescription>
+                    Perubahan profil berhasil disimpan pada{" "}
+                    {lastUpdated?.toLocaleString("id-ID", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <form onSubmit={handleUpdateProfile} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Nama Lengkap</Label>
@@ -129,13 +152,27 @@ export default function ProfilePage() {
                 </div>
                 <Button type="submit" disabled={loading}>
                   {loading ? (
-                    <span className="animate-spin mr-2">⏳</span>
+                    <Spinner width={15} height={15} />
                   ) : (
                     <Save className="mr-2 h-4 w-4" />
                   )}
                   Simpan Perubahan
                 </Button>
               </form>
+
+              {/* Timestamp Display */}
+              {lastUpdated && (
+                <p className="text-xs text-muted-foreground mt-4 text-center">
+                  Terakhir diperbarui:{" "}
+                  {lastUpdated.toLocaleString("id-ID", {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

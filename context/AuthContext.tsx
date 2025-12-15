@@ -69,7 +69,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     document.cookie = `token=${accessToken}; path=/; max-age=86400; SameSite=Strict`;
     setIsAuthenticated(true);
     await refreshProfile(accessToken);
-    toast.success("Berhasil login!");
+    toast.success("Login Berhasil", {
+      description: "Selamat datang kembali!",
+    });
     router.push("/dashboard");
   };
 

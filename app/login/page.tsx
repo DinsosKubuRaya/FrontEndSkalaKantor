@@ -26,9 +26,7 @@ export default function LoginPage() {
       const response = await authAPI.login(username, password);
       if (response.access_token && response.refresh_token) {
         await login(response.access_token, response.refresh_token);
-        toast.success("Login Berhasil", {
-          description: "Selamat datang kembali!",
-        });
+        // Toast notification handled by AuthContext
       }
     } catch (error: unknown) {
       let msg = "Terjadi kesalahan";

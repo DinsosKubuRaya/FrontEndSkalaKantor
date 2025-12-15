@@ -138,27 +138,30 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Conditional Dialogs */}
-      {editUser && (
-        <EmployeeFormDialog
-          userToEdit={editUser}
-          onSuccess={() => {
-            setEditUser(null);
-            fetchEmployees();
-          }}
-          key={editUser.ID}
-        />
-      )}
+      {/* Controlled Dialogs - Always rendered */}
+      <EmployeeFormDialog
+        userToEdit={editUser || undefined}
+        open={!!editUser}
+        onOpenChange={(open) => {
+          if (!open) setEditUser(null);
+        }}
+        onSuccess={() => {
+          setEditUser(null);
+          fetchEmployees();
+        }}
+      />
 
-      {deleteUser && (
-        <DeleteUserDialog
-          user={deleteUser}
-          onSuccess={() => {
-            setDeleteUser(null);
-            fetchEmployees();
-          }}
-        />
-      )}
+      <DeleteUserDialog
+        user={deleteUser}
+        open={!!deleteUser}
+        onOpenChange={(open) => {
+          if (!open) setDeleteUser(null);
+        }}
+        onSuccess={() => {
+          setDeleteUser(null);
+          fetchEmployees();
+        }}
+      />
     </div>
   );
 }
