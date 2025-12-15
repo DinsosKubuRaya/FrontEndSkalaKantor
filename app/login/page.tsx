@@ -15,6 +15,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import Image from "next/image";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -70,9 +71,8 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="Masukkan password..."
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

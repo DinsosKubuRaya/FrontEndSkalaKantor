@@ -65,15 +65,41 @@ export interface ChangePasswordInput {
 
 export type Role = "staff" | "admin" | "supervisor";
 
+
+export interface EmployeeFilterParams {
+  limit?: number;
+  page?: number;
+  name?: string;
+  role?: string;
+  start_date?: string;
+  end_date?: string;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
+}
+
+export interface DocumentFilterParams {
+  limit?: number;
+  page?: number;
+  subject?: string;
+  user_id?: string;
+  employee_id?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
 export interface DocumentStaff {
-  ID: string;
-  Subject: string;
-  UserID: string;
-  EmployeeID?: string;
-  FilePath: string;
-  FileUrl: string;
-  CreatedAt: string;
-  UpdatedAt: string;
+  id: string;
+  subject: string;
+  user_id?: string;
+  employee_id?: string;
+  file_path?: string;
+  file_url: string;
+  file_name?: string;
+  public_id?: string;
+  resource_type?: string;
+  created_at: string;
+  updated_at: string;
+  owner_name?: string;
   user?: {
     name: string;
     username: string;

@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Pencil } from "lucide-react";
+import { PasswordInput } from "@/components/ui/password-input";
 
 interface Props {
   children?: React.ReactNode;
@@ -56,6 +58,17 @@ export function EmployeeFormDialog({ children, onSuccess, userToEdit }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!userToEdit && !password) {
+      toast.error("Password wajib diisi untuk pegawai baru");
+      return;
+    }
+
+    if (!userToEdit && password.length < 6) {
+      toast.error("Password minimal 6 karakter");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -67,11 +80,6 @@ export function EmployeeFormDialog({ children, onSuccess, userToEdit }: Props) {
         });
         toast.success("Pegawai berhasil diperbarui");
       } else {
-        if (!password) {
-          toast.error("Password wajib diisi untuk pegawai baru");
-          setLoading(false);
-          return;
-        }
         await employeeAPI.create({
           name,
           username,
@@ -100,16 +108,22 @@ export function EmployeeFormDialog({ children, onSuccess, userToEdit }: Props) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-106.25">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {userToEdit ? "Edit Pegawai" : "Tambah Pegawai"}
+            {userToEdit ? "Edit Pegawai" : "Tambah Pegawai Baru"}
           </DialogTitle>
+          <DialogDescription>
+            {userToEdit
+              ? "Perbarui informasi pegawai"
+              : "Isi form untuk membuat akun pegawai baru"}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>Nama Lengkap</Label>
+            <Label htmlFor="name">Nama Lengkap</Label>
             <Input
+              id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Nama Pegawai"
@@ -117,8 +131,9 @@ export function EmployeeFormDialog({ children, onSuccess, userToEdit }: Props) {
             />
           </div>
           <div className="space-y-2">
-            <Label>Username</Label>
+            <Label htmlFor="username">Username</Label>
             <Input
+              id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Username login"
@@ -129,21 +144,22 @@ export function EmployeeFormDialog({ children, onSuccess, userToEdit }: Props) {
           {/* Password hanya required Create */}
           {!userToEdit && (
             <div className="space-y-2">
-              <Label>Password</Label>
-              <Input
-                type="password"
+              <Label htmlFor="password">Password</Label>
+              <PasswordInput
+                id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="******"
+                placeholder="Minimal 6 karakter"
                 required
+                showStrength
               />
             </div>
           )}
 
           <div className="space-y-2">
-            <Label>Role</Label>
+            <Label htmlFor="role">Role</Label>
             <Select value={role} onValueChange={setRole}>
-              <SelectTrigger>
+              <SelectTrigger id="role">
                 <SelectValue placeholder="Pilih Role" />
               </SelectTrigger>
               <SelectContent>
@@ -155,7 +171,11 @@ export function EmployeeFormDialog({ children, onSuccess, userToEdit }: Props) {
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Menyimpan..." : "Simpan"}
+            {loading
+              ? "Menyimpan..."
+              : userToEdit
+              ? "Perbarui"
+              : "Buat Pegawai"}
           </Button>
         </form>
       </DialogContent>

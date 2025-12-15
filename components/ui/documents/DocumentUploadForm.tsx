@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ import { toast } from "sonner";
 interface Props {
   children: React.ReactNode;
   onSuccess: () => void;
-  isAdmin?: boolean; // Jika true, tampilkan pilihan user
+  isAdmin?: boolean;
 }
 
 export function DocumentUploadForm({
@@ -38,14 +39,12 @@ export function DocumentUploadForm({
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
 
-  // Form State
   const [subject, setSubject] = useState("");
   const [selectedUser, setSelectedUser] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (isAdmin && open) {
-      // Load users for dropdown
       employeeAPI.getAll().then((res) => {
         const data = res.data || [];
         setEmployees(Array.isArray(data) ? data : []);
@@ -93,9 +92,14 @@ export function DocumentUploadForm({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-106.25">
         <DialogHeader>
           <DialogTitle>Upload Dokumen</DialogTitle>
+          <DialogDescription>
+            {isAdmin
+              ? "Upload dokumen untuk pegawai tertentu. Pilih pemilik dokumen dan file yang akan diupload."
+              : "Upload dokumen pribadi Anda. Isi judul dan pilih file yang akan diupload."}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">

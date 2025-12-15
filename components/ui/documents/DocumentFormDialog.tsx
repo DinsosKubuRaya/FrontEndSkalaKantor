@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
@@ -35,7 +36,7 @@ export default function DocumentFormDialog({
 
   useEffect(() => {
     if (documentToEdit) {
-      setSubject(documentToEdit.Subject);
+      setSubject(documentToEdit.subject);
       setFile(null);
     } else {
       setSubject("");
@@ -49,7 +50,7 @@ export default function DocumentFormDialog({
 
     try {
       if (documentToEdit) {
-        await documentAPI.updateSelf(documentToEdit.ID, { subject, file });
+        await documentAPI.updateSelf(documentToEdit.id, { subject, file });
         toast.success("Dokumen berhasil diupdate");
       } else {
         await documentAPI.uploadSelf({ subject, file });
@@ -71,6 +72,11 @@ export default function DocumentFormDialog({
           <DialogTitle>
             {documentToEdit ? "Edit Dokumen" : "Upload Dokumen Baru"}
           </DialogTitle>
+          <DialogDescription>
+            {documentToEdit
+              ? "Perbarui informasi dokumen. Biarkan file kosong jika tidak ingin mengubah file."
+              : "Isi informasi dan pilih file yang akan diupload."}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

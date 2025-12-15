@@ -15,7 +15,9 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Lock, Save } from "lucide-react";
+import { User, Save, AlertCircle } from "lucide-react";
+import { PasswordInput } from "@/components/ui/password-input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function ProfilePage() {
   const { user, refreshProfile } = useAuth();
@@ -49,10 +51,17 @@ export default function ProfilePage() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (newPassword.length < 6) {
+      toast.error("Password baru minimal 6 karakter");
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       toast.error("Password baru dan konfirmasi tidak cocok");
       return;
     }
+
     setLoading(true);
     try {
       await employeeAPI.changePassword({
@@ -137,43 +146,67 @@ export default function ProfilePage() {
             <CardHeader>
               <CardTitle>Ganti Password</CardTitle>
               <CardDescription>
-                Pastikan password baru Anda aman.
+                Pastikan password baru Anda aman dan mudah diingat.
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <Alert className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Password minimal 6 karakter. Gunakan kombinasi huruf besar,
+                  huruf kecil, angka, dan simbol untuk keamanan lebih baik.
+                </AlertDescription>
+              </Alert>
+
               <form onSubmit={handleChangePassword} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Password Saat Ini</Label>
-                  <Input
-                    type="password"
+                  <Label htmlFor="current-password">Password Saat Ini</Label>
+                  <PasswordInput
+                    id="current-password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     required
+                    placeholder="Masukkan password saat ini"
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label>Password Baru</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="pl-9"
-                      required
-                    />
-                  </div>
+                  <Label htmlFor="new-password">Password Baru</Label>
+                  <PasswordInput
+                    id="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    showStrength
+                    placeholder="Masukkan password baru"
+                  />
                 </div>
+
                 <div className="space-y-2">
-                  <Label>Konfirmasi Password Baru</Label>
-                  <Input
-                    type="password"
+                  <Label htmlFor="confirm-password">
+                    Konfirmasi Password Baru
+                  </Label>
+                  <PasswordInput
+                    id="confirm-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
+                    placeholder="Konfirmasi password baru"
                   />
+                  {confirmPassword && newPassword !== confirmPassword && (
+                    <p className="text-xs text-red-500">Password tidak cocok</p>
+                  )}
+                  {confirmPassword && newPassword === confirmPassword && (
+                    <p className="text-xs text-green-500">Password cocok</p>
+                  )}
                 </div>
-                <Button type="submit" variant="destructive" disabled={loading}>
+
+                <Button
+                  type="submit"
+                  variant="destructive"
+                  disabled={loading}
+                  className="w-full sm:w-auto"
+                >
                   {loading ? "Memproses..." : "Ganti Password"}
                 </Button>
               </form>

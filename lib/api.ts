@@ -10,7 +10,9 @@ import {
   DocumentSelfInput,
   ApiResponse,
   ProfileResponse,
-  PaginatedDocuments
+  PaginatedDocuments,
+  EmployeeFilterParams,
+  DocumentFilterParams
 } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -164,10 +166,16 @@ export const employeeAPI = {
     const { data } = await api.get<ApiResponse<Employee[]>>(`/api/employee/search?name=${name}`);
     return data;
   },
-  getAll: async (params?: { limit?: number; page?: number }): Promise<ApiResponse<Employee[]>> => {
+  getAll: async (params?: EmployeeFilterParams): Promise<ApiResponse<Employee[]>> => {
     const queryParams = new URLSearchParams();
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.name) queryParams.append('name', params.name);
+    if (params?.role) queryParams.append('role', params.role);
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    if (params?.sort_by) queryParams.append('sort_by', params.sort_by);
+    if (params?.sort_order) queryParams.append('sort_order', params.sort_order);
     const queryString = queryParams.toString();
     const { data } = await api.get<ApiResponse<Employee[]>>(`/api/employee/${queryString ? `?${queryString}` : ''}`);
     return data;
@@ -228,16 +236,28 @@ export const documentAPI = {
     const { data } = await api.post<ApiResponse<DocumentStaff>>("/api/document_staff/upload", formData);
     return data;
   },
-  getAllAdmin: async (params?: { limit?: number; page?: number }): Promise<ApiResponse<PaginatedDocuments>> => {
+  getAllAdmin: async (params?: DocumentFilterParams): Promise<ApiResponse<PaginatedDocuments>> => {
     const queryParams = new URLSearchParams();
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.subject) queryParams.append('subject', params.subject);
+    if (params?.user_id) queryParams.append('user_id', params.user_id);
+    if (params?.employee_id) queryParams.append('employee_id', params.employee_id);
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
     const queryString = queryParams.toString();
     const { data } = await api.get<ApiResponse<PaginatedDocuments>>(`/api/document_staff/${queryString ? `?${queryString}` : ''}`);
     return data;
   },
-  getMyDocuments: async (): Promise<ApiResponse<PaginatedDocuments>> => {
-    const { data } = await api.get<ApiResponse<PaginatedDocuments>>("/api/document_staff/my-documents");
+  getMyDocuments: async (params?: DocumentFilterParams): Promise<ApiResponse<PaginatedDocuments>> => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.subject) queryParams.append('subject', params.subject);
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    const queryString = queryParams.toString();
+    const { data } = await api.get<ApiResponse<PaginatedDocuments>>(`/api/document_staff/my-documents${queryString ? `?${queryString}` : ''}`);
     return data;
   },
   updateAdmin: async (id: string, payload: DocumentAdminInput): Promise<ApiResponse<DocumentStaff>> => {

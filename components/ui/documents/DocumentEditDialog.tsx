@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,7 @@ export function DocumentEditDialog({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const [subject, setSubject] = useState(document.Subject);
+  const [subject, setSubject] = useState(document.subject);
   const [file, setFile] = useState<File | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,12 +38,12 @@ export function DocumentEditDialog({
     setLoading(true);
     try {
       if (isAdmin) {
-        await documentAPI.updateAdmin(document.ID, {
+        await documentAPI.updateAdmin(document.id, {
           subject,
           file: file || null,
         });
       } else {
-        await documentAPI.updateSelf(document.ID, {
+        await documentAPI.updateSelf(document.id, {
           subject,
           file: file || null,
         });
@@ -67,6 +68,10 @@ export function DocumentEditDialog({
         <DialogContent className="sm:max-w-106.25">
           <DialogHeader>
             <DialogTitle>Edit Dokumen</DialogTitle>
+            <DialogDescription>
+              Ubah judul atau file dokumen. Biarkan file kosong jika tidak ingin
+              mengubah file yang sudah ada.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 py-4">
             <div className="space-y-2">
