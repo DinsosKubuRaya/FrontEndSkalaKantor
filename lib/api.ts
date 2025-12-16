@@ -38,6 +38,9 @@ let failedQueue: Array<{
   reject: (reason?: unknown) => void;
 }> = [];
 
+const failedEndpoints = new Map<string, number>();
+const MAX_RETRY_PER_ENDPOINT = 2;
+
 const processQueue = (error: Error | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
@@ -49,11 +52,45 @@ const processQueue = (error: Error | null = null) => {
   failedQueue = [];
 };
 
+const shouldRetryRequest = (url: string): boolean => {
+  const retryCount = failedEndpoints.get(url) || 0;
+  return retryCount < MAX_RETRY_PER_ENDPOINT;
+};
+
+const incrementRetryCount = (url: string) => {
+  const retryCount = failedEndpoints.get(url) || 0;
+  failedEndpoints.set(url, retryCount + 1);
+};
+
+const clearRetryCount = (url: string) => {
+  failedEndpoints.delete(url);
+};
+
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.config.url) {
+      clearRetryCount(response.config.url);
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
+    const requestUrl = originalRequest.url || '';
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (!shouldRetryRequest(requestUrl)) {
+        console.warn(`[API] Max retry attempts reached for ${requestUrl}`);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          localStorage.removeItem("refresh_token");
+          document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+          if (!window.location.pathname.includes("/login")) {
+            window.location.href = "/login";
+          }
+        }
+        return Promise.reject(error);
+      }
+
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -68,42 +105,53 @@ api.interceptors.response.use(
 
       originalRequest._retry = true;
       isRefreshing = true;
+      incrementRetryCount(requestUrl);
 
       if (typeof window !== "undefined") {
         const refreshToken = localStorage.getItem("refresh_token");
 
         if (!refreshToken) {
+          console.warn("[API] No refresh token available");
           isRefreshing = false;
           processQueue(new Error("No refresh token available"));
           localStorage.removeItem("token");
           localStorage.removeItem("refresh_token");
           document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
-          window.location.href = "/login";
+          
+          if (!window.location.pathname.includes("/login")) {
+            window.location.href = "/login";
+          }
           return Promise.reject(error);
         }
 
         try {
+          console.log("[API] Attempting token refresh...");
           const formData = new FormData();
           formData.append("refresh_token", refreshToken);
           const { data } = await api.post<LoginResponse>("/api/auth/refresh", formData);
 
           if (data.access_token && data.refresh_token) {
+            console.log("[API] Token refresh successful");
             localStorage.setItem("token", data.access_token);
             localStorage.setItem("refresh_token", data.refresh_token);
             document.cookie = `token=${data.access_token}; path=/; max-age=86400; SameSite=Strict`;
             originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
             processQueue();
             isRefreshing = false;
+            
+            clearRetryCount(requestUrl);
+            
             return api(originalRequest);
           }
         } catch (refreshError) {
+          console.error("[API] Token refresh failed:", refreshError);
           processQueue(refreshError as Error);
           isRefreshing = false;
           localStorage.removeItem("token");
           localStorage.removeItem("refresh_token");
           document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
           
-          if (typeof window !== "undefined") {
+          if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
             window.location.href = "/login";
           }
 
@@ -263,9 +311,17 @@ export const documentAPI = {
   updateAdmin: async (id: string, payload: DocumentAdminInput): Promise<ApiResponse<DocumentStaff>> => {
     const formData = new FormData();
     formData.append("subject", payload.subject);
-    if (payload.user_id) formData.append("user_id", payload.user_id);
-    if (payload.employee_id) formData.append("employee_id", payload.employee_id);
-    if (payload.file) formData.append("file", payload.file);
+    
+    if (payload.user_id && payload.user_id.trim() !== "") {
+      formData.append("user_id", payload.user_id);
+    }
+    if (payload.employee_id && payload.employee_id.trim() !== "") {
+      formData.append("employee_id", payload.employee_id);
+    }
+    if (payload.file) {
+      formData.append("file", payload.file);
+    }
+    
     const { data } = await api.patch<ApiResponse<DocumentStaff>>(`/api/document_staff/${id}`, formData);
     return data;
   },

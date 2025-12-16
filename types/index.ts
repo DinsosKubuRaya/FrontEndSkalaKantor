@@ -113,7 +113,7 @@ export interface DocumentAdminInput {
   subject: string;
   user_id?: string;
   employee_id?: string;
-  file: File | null;
+  file?: File | null;
 }
 
 export interface DocumentSelfInput {

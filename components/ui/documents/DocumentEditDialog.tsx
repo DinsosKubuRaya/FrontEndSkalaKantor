@@ -34,7 +34,6 @@ export function DocumentEditDialog({
   const [subject, setSubject] = useState(document.subject);
   const [file, setFile] = useState<File | null>(null);
 
-  // Reset form ketika dokumen berubah
   useEffect(() => {
     setSubject(document.subject);
     setFile(null);
@@ -47,6 +46,7 @@ export function DocumentEditDialog({
       if (isAdmin) {
         await documentAPI.updateAdmin(document.id, {
           subject,
+          employee_id: document.employee_id,
           file: file || null,
         });
       } else {

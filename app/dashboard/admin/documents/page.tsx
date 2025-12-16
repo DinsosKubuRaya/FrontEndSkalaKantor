@@ -25,6 +25,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Pencil,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DocumentUploadForm } from "@/components/ui/documents/DocumentUploadForm";
@@ -51,6 +52,8 @@ export default function AdminDocumentsPage() {
 
   const [showFilters, setShowFilters] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<DocumentStaff | null>(null);
+  const [editDoc, setEditDoc] = useState<DocumentStaff | null>(null);
+  const [deleteDoc, setDeleteDoc] = useState<{ id: string; subject: string } | null>(null);
 
   const fetchDocuments = async () => {
     setLoading(true);
@@ -298,6 +301,14 @@ export default function AdminDocumentsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => setEditDoc(doc)}
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           asChild
                           title="Download"
                         >
@@ -309,12 +320,14 @@ export default function AdminDocumentsPage() {
                             <Download className="h-4 w-4" />
                           </a>
                         </Button>
-                        {/* Edit disabled for admin - backend limitation */}
-                        <DeleteDocumentDialog
-                          document={{ id: doc.id, subject: doc.subject }}
-                          onSuccess={fetchDocuments}
-                          variant="admin"
-                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteDoc({ id: doc.id, subject: doc.subject })}
+                          title="Hapus"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -357,14 +370,24 @@ export default function AdminDocumentsPage() {
                       <Eye className="h-4 w-4 mr-1" />
                       Preview
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditDoc(doc)}
+                    >
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
                   </div>
                   <div className="flex gap-1">
-                    {/* Edit disabled for admin - backend limitation */}
-                    <DeleteDocumentDialog
-                      document={{ id: doc.id, subject: doc.subject }}
-                      onSuccess={fetchDocuments}
-                      variant="admin"
-                    />
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDeleteDoc({ id: doc.id, subject: doc.subject })}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Hapus
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -410,6 +433,46 @@ export default function AdminDocumentsPage() {
           isOpen={!!previewDoc}
           onClose={() => setPreviewDoc(null)}
           document={previewDoc}
+        />
+      )}
+
+      {/* Edit Dialog */}
+      {editDoc && (
+        <DocumentEditDialog
+          document={editDoc}
+          isOpen={!!editDoc}
+          onClose={() => setEditDoc(null)}
+          onSuccess={async () => {
+            setEditDoc(null);
+            // Clear state first to force re-render
+            setDocuments([]);
+            setLoading(true);
+            // Small delay to ensure clean state update
+            await new Promise(resolve => setTimeout(resolve, 100));
+            // Refetch documents with updated data
+            await fetchDocuments();
+          }}
+          isAdmin={true}
+        />
+      )}
+
+      {/* Delete Dialog */}
+      {deleteDoc && (
+        <DeleteDocumentDialog
+          document={deleteDoc}
+          isOpen={!!deleteDoc}
+          onClose={() => setDeleteDoc(null)}
+          onSuccess={async () => {
+            setDeleteDoc(null);
+            // Clear state first to force re-render
+            setDocuments([]);
+            setLoading(true);
+            // Small delay to ensure clean state update
+            await new Promise(resolve => setTimeout(resolve, 100));
+            // Refetch documents
+            await fetchDocuments();
+          }}
+          variant="admin"
         />
       )}
     </div>
