@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { authAPI } from "@/lib/api";
+import { authAPI, getErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,12 +26,11 @@ export default function LoginPage() {
       const response = await authAPI.login(username, password);
       if (response.access_token && response.refresh_token) {
         await login(response.access_token, response.refresh_token);
-        // Toast notification handled by AuthContext
       }
     } catch (error: unknown) {
-      let msg = "Terjadi kesalahan";
-      if (error instanceof Error) msg = error.message;
-      toast.error("Login Gagal", { description: msg });
+      toast.error("Login gagal. Periksa username dan password Anda.", {
+        description: getErrorMessage(error),
+      });
     } finally {
       setIsLoading(false);
     }

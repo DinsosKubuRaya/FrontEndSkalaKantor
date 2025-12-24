@@ -15,7 +15,9 @@ import {
   DocumentFilterParams
 } from "@/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://backendskalakantor-production.up.railway.app";
+
 
 const api = axios.create({
   baseURL: API_URL,
@@ -78,7 +80,6 @@ api.interceptors.response.use(
     const requestUrl = originalRequest.url || '';
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (!shouldRetryRequest(requestUrl)) {
-        console.warn(`[API] Max retry attempts reached for ${requestUrl}`);
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");
           localStorage.removeItem("refresh_token");
@@ -111,7 +112,6 @@ api.interceptors.response.use(
         const refreshToken = localStorage.getItem("refresh_token");
 
         if (!refreshToken) {
-          console.warn("[API] No refresh token available");
           isRefreshing = false;
           processQueue(new Error("No refresh token available"));
           localStorage.removeItem("token");
@@ -125,13 +125,11 @@ api.interceptors.response.use(
         }
 
         try {
-          console.log("[API] Attempting token refresh...");
           const formData = new FormData();
           formData.append("refresh_token", refreshToken);
           const { data } = await api.post<LoginResponse>("/api/auth/refresh", formData);
 
           if (data.access_token && data.refresh_token) {
-            console.log("[API] Token refresh successful");
             localStorage.setItem("token", data.access_token);
             localStorage.setItem("refresh_token", data.refresh_token);
             document.cookie = `token=${data.access_token}; path=/; max-age=86400; SameSite=Strict`;
@@ -144,7 +142,6 @@ api.interceptors.response.use(
             return api(originalRequest);
           }
         } catch (refreshError) {
-          console.error("[API] Token refresh failed:", refreshError);
           processQueue(refreshError as Error);
           isRefreshing = false;
           localStorage.removeItem("token");
@@ -171,9 +168,58 @@ export const getErrorMessage = (error: unknown): string => {
     if (data?.message) {
       return data.message;
     }
+    if (data?.error && typeof data.error === 'string') {
+      return data.error;
+    }
+    const status = error.response?.status;
+    
+    switch (status) {
+      case 400:
+        return "Data yang dikirim tidak valid. Mohon periksa kembali input Anda.";
+      
+      case 401:
+        return "Sesi Anda telah berakhir. Silakan login kembali.";
+      
+      case 403:
+        return "Anda tidak memiliki akses untuk melakukan aksi ini.";
+      
+      case 404:
+        return "Data yang Anda cari tidak ditemukan.";
+      
+      case 409:
+        return "Data sudah ada. Mohon gunakan data yang berbeda.";
+      
+      case 422:
+        return "Data tidak dapat diproses. Mohon periksa format input Anda.";
+      
+      case 500:
+        return "Terjadi kesalahan pada server. Silakan coba beberapa saat lagi.";
+      
+      case 502:
+        return "Server sedang mengalami gangguan. Mohon coba beberapa saat lagi.";
+      
+      case 503:
+        return "Layanan sedang dalam pemeliharaan. Mohon coba beberapa saat lagi.";
+      
+      case 504:
+        return "Koneksi ke server terlalu lama. Mohon coba lagi.";
+      
+      default:
+        if (error.code === 'ERR_NETWORK') {
+          return "Tidak dapat terhubung ke server. Periksa koneksi internet Anda.";
+        }
+        
+        if (error.code === 'ECONNABORTED' || error.code === 'ERR_CANCELED') {
+          return "Koneksi timeout. Mohon coba lagi.";
+        }
+        return "Terjadi kesalahan. Mohon coba lagi atau hubungi administrator.";
+    }
+  }
+  if (error instanceof Error) {
     return error.message;
   }
-  return String(error);
+  
+  return "Terjadi kesalahan yang tidak diketahui.";
 };
 
 // --- AUTH API ---

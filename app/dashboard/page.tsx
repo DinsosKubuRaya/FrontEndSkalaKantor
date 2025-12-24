@@ -39,7 +39,7 @@ export default function DashboardPage() {
           employees: employeesCount,
         });
       } catch (error) {
-        console.error("Failed to load stats", error);
+        throw error;
       }
     };
 
