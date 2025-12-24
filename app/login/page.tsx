@@ -111,7 +111,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-8">
-          &copy; {new Date().getFullYear()} Mbowleeh. All rights reserved.
+          &copy; {new Date().getFullYear()} Dinsos. All rights reserved.
         </p>
       </div>
     </div>
